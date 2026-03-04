@@ -9,14 +9,19 @@ import {
   AlertTriangle,
   FileWarning,
   CheckCircle2,
+  AppWindow,
+  FileSignature,
+  Key,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const kpis = [
-  { label: "Computadores", value: 142, icon: Monitor, trend: "+3 este mês" },
-  { label: "Dispositivos Móveis", value: 67, icon: Smartphone, trend: "+1 este mês" },
-  { label: "VPNs Ativas", value: 34, icon: Shield, trend: "2 pendentes" },
+  { label: "Computadores", value: 5, icon: Monitor, trend: "4 Ativos, 1 Manutenção" },
+  { label: "Disp. Móveis", value: 3, icon: Smartphone, trend: "1 Desativado" },
+  { label: "Softwares (Licenças)", value: 58, icon: AppWindow, trend: "52 em uso" },
+  { label: "Contratos Ativos", value: 4, icon: FileSignature, trend: "1 Crítico (Dell)" },
+  { label: "Itens Cofre/Rede", value: 6, icon: Key, trend: "2 VPNs configuradas" },
   { label: "IPs em Uso", value: 89, icon: Globe, trend: "de 254 disponíveis" },
 ];
 
@@ -27,11 +32,11 @@ const statusChecks = [
 ];
 
 const alerts = [
-  { id: 1, message: "Termo de Responsabilidade pendente — Notebook Dell #045", type: "warning" as const, date: "Hoje" },
-  { id: 2, message: "Certificado SSL expira em 15 dias — portal.gellak.com.br", type: "warning" as const, date: "Hoje" },
-  { id: 3, message: "Backup noturno concluído com sucesso", type: "success" as const, date: "Ontem" },
-  { id: 4, message: "Novo dispositivo registrado — iPhone 15 Pro (Maria S.)", type: "info" as const, date: "Ontem" },
-  { id: 5, message: "Senha de VPN expirada — João Almeida", type: "warning" as const, date: "2 dias atrás" },
+  { id: 1, message: "Contrato Dell ProSupport vence em (20/11/2024)", type: "warning" as const, date: "Contratos" },
+  { id: 2, message: "Licença Adobe Creative Cloud atinge (5/5) uso", type: "warning" as const, date: "Softwares" },
+  { id: 3, message: "Manutenção do NTB-COM-045 finalizada com sucesso", type: "success" as const, date: "Inventário (Ontem)" },
+  { id: 4, message: "Novo acesso 'FortiGate VPN' registrado no cofre", type: "info" as const, date: "Acessos (Ontem)" },
+  { id: 5, message: "Uso da licença Office 365 E3 em 90%", type: "warning" as const, date: "Softwares (Hoje)" },
 ];
 
 export default function Dashboard() {
@@ -45,20 +50,16 @@ export default function Dashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {kpis.map((kpi) => (
-          <Card key={kpi.label} className="shadow-sm">
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium">{kpi.label}</p>
-                  <p className="text-3xl font-bold mt-1 tracking-tight">{kpi.value}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{kpi.trend}</p>
-                </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
-                  <kpi.icon className="h-5 w-5 text-accent-foreground" />
-                </div>
+          <Card key={kpi.label} className="shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-4 flex flex-col items-center text-center justify-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent mb-3">
+                <kpi.icon className="h-5 w-5 text-accent-foreground" />
               </div>
+              <p className="text-2xl font-bold tracking-tight">{kpi.value}</p>
+              <p className="text-xs text-muted-foreground font-medium mt-1 uppercase tracking-wider">{kpi.label}</p>
+              <p className="text-[10px] text-muted-foreground mt-2 bg-muted/50 px-2 py-0.5 rounded-full">{kpi.trend}</p>
             </CardContent>
           </Card>
         ))}
