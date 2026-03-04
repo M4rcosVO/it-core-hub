@@ -15,6 +15,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const vpnUsers = [
   { id: 1, nome: "Carlos Silva", login: "carlos.silva", status: "Ativo", criacao: "15/01/2024" },
@@ -121,7 +130,30 @@ export default function Rede() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar por nome ou login..." value={searchVpn} onChange={(e) => setSearchVpn(e.target.value)} className="pl-9" />
             </div>
-            <Button className="gap-2"><Plus className="h-4 w-4" />Novo Acesso</Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="gap-2"><Plus className="h-4 w-4" />Novo Acesso</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Novo Acesso VPN</DialogTitle>
+                  <DialogDescription>Libere acesso remoto para um colaborador.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Nome do Colaborador</label>
+                    <Input placeholder="Ex: Carlos Silva" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Login AD</label>
+                    <Input placeholder="Ex: carlos.silva" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button">Salvar Acesso</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <Card className="shadow-sm">
@@ -158,9 +190,34 @@ export default function Rede() {
         </TabsContent>
 
         <TabsContent value="ipam" className="mt-4 space-y-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar IP, dispositivo ou setor..." value={searchIp} onChange={(e) => setSearchIp(e.target.value)} className="pl-9" />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar IP, dispositivo ou setor..." value={searchIp} onChange={(e) => setSearchIp(e.target.value)} className="pl-9" />
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="gap-2"><Plus className="h-4 w-4" />Reservar IP</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Reserva de IP</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Dispositivo</label>
+                    <Input placeholder="Ex: Impressora RH" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Endereço IP</label>
+                    <Input placeholder="Ex: 192.168.1.100" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button">Salvar IP</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <Card className="shadow-sm">
@@ -195,7 +252,35 @@ export default function Rede() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar por nome ou ID..." value={searchVlan} onChange={(e) => setSearchVlan(e.target.value)} className="pl-9" />
             </div>
-            <Button className="gap-2"><Plus className="h-4 w-4" />Nova Subrede</Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="gap-2"><Plus className="h-4 w-4" />Nova Subrede</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Adicionar Nova VLAN</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">VLAN ID</label>
+                      <Input type="number" placeholder="Ex: 50" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Faixa de IP</label>
+                      <Input placeholder="Ex: 10.0.50.0/24" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Nome da Rede</label>
+                    <Input placeholder="Ex: Comercial" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button">Salvar VLAN</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <Card className="shadow-sm">
@@ -239,7 +324,29 @@ export default function Rede() {
         <TabsContent value="switches" className="mt-4">
           <div className="space-y-6">
             <div className="flex justify-end">
-              <Button className="gap-2"><Plus className="h-4 w-4" />Adicionar Equipamento</Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="gap-2"><Plus className="h-4 w-4" />Adicionar Equipamento</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Adicionar Switch</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Hostname</label>
+                      <Input placeholder="Ex: SW-CORE-02" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">IP de Gerenciamento</label>
+                      <Input placeholder="Ex: 10.0.10.4" />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button">Salvar Equipamento</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
             {switchList.map((sw) => (
               <Card key={sw.hostname} className="shadow-sm overflow-hidden">

@@ -23,6 +23,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
 // Mock data
@@ -64,10 +73,65 @@ export default function Acessos() {
           <h1 className="text-2xl font-bold tracking-tight">Cofre de Acessos</h1>
           <p className="text-muted-foreground text-sm mt-1">Gestão centralizada de senhas e credenciais (VPNs, Sistemas, etc)</p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nova Credencial
-        </Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Nova Credencial
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adicionar Nova Credencial</DialogTitle>
+              <DialogDescription>
+                Cadastre um novo login para acesso a sistemas, VPNs ou ferramentas.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Nome do Sistema / Ferramenta</label>
+                <Input placeholder="Ex: FortiGate VPN" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">URL Base</label>
+                <Input placeholder="Ex: vpn.empresa.com.br" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Usuário</label>
+                  <Input placeholder="Ex: admin" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Senha</label>
+                  <Input type="password" placeholder="••••••••" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Categoria</label>
+                  <Select>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="VPN">VPN</SelectItem>
+                      <SelectItem value="ERP">ERP</SelectItem>
+                      <SelectItem value="Web">Web</SelectItem>
+                      <SelectItem value="E-mail">E-mail</SelectItem>
+                      <SelectItem value="Banco de Dados">Banco de Dados</SelectItem>
+                      <SelectItem value="Outros">Outros</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Setor</label>
+                  <Input placeholder="Ex: TI" />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button">Salvar Credencial</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filters */}
