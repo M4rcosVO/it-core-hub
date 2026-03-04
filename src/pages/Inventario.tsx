@@ -18,6 +18,7 @@ import {
   Clock,
   Archive,
   Wrench,
+  BriefcaseBusiness,
   ShieldAlert,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,6 +69,12 @@ const softwares = [
   { id: 2, nome: "Adobe Creative Cloud", fabricante: "Adobe", licenca: "Subscrição Anual", qtd: 5, assigned: 5, vencimento: "15/10/2024" },
   { id: 3, nome: "Totvs Protheus", fabricante: "Totvs", licenca: "Vitalícia", qtd: 1, assigned: 1, vencimento: "—" },
   { id: 4, nome: "AutoCAD 2024", fabricante: "Autodesk", licenca: "Subscrição Anual", qtd: 2, assigned: 1, vencimento: "20/03/2025" },
+];
+
+const emprestimos = [
+  { id: 1, equipamento: "Notebook Dell Vostro (NTB-COM-045)", solicitante: "Pedro Mendes", dataRetirada: "04/03/2026", previsaoDevolucao: "06/03/2026", status: "Emprestado", motivo: "Viagem a Filial SP" },
+  { id: 2, equipamento: "Modem 4G Vivo (MOD-4G-02)", solicitante: "Juliana Rocha", dataRetirada: "01/03/2026", previsaoDevolucao: "03/03/2026", status: "Atrasado", motivo: "Evento Externo" },
+  { id: 3, equipamento: "Projetor Epson WXGA", solicitante: "Carlos Silva", dataRetirada: "10/02/2026", previsaoDevolucao: "10/02/2026", status: "Devolvido", motivo: "Reunião de Diretoria" },
 ];
 
 const setores = ["Todos", "Administrativo", "Financeiro", "Comercial", "RH", "TI"];
@@ -162,6 +169,10 @@ export default function Inventario() {
           <TabsTrigger value="softwares" className="gap-2">
             <AppWindow className="h-4 w-4" />
             Softwares
+          </TabsTrigger>
+          <TabsTrigger value="emprestimos" className="gap-2">
+            <BriefcaseBusiness className="h-4 w-4" />
+            Empréstimos
           </TabsTrigger>
         </TabsList>
 
@@ -318,6 +329,44 @@ export default function Inventario() {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="emprestimos" className="mt-4">
+          <Card className="shadow-sm">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-3 font-medium text-muted-foreground">Equipamento</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Solicitante</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Retirada</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Prev. Devolução</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {emprestimos.map((e) => (
+                      <tr key={e.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="p-3 font-medium">{e.equipamento}</td>
+                        <td className="p-3">{e.solicitante}</td>
+                        <td className="p-3 font-mono text-xs text-muted-foreground">{e.dataRetirada}</td>
+                        <td className="p-3 font-mono text-xs hidden sm:table-cell text-muted-foreground">{e.previsaoDevolucao}</td>
+                        <td className="p-3">
+                          <Badge variant={e.status === "Emprestado" ? "secondary" : e.status === "Atrasado" ? "destructive" : "outline"}
+                            className={e.status === "Emprestado" ? "bg-warning hover:bg-warning/90 text-warning-foreground" : ""}>
+                            {e.status}
+                          </Badge>
+                        </td>
+                        <td className="p-3 hidden md:table-cell text-muted-foreground">{e.motivo}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

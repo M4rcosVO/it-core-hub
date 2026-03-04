@@ -7,6 +7,7 @@ import {
   Server,
   Key,
   FileSignature,
+  CheckSquare,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -29,6 +30,7 @@ const menuItems = [
   { title: "Contratos", url: "/contratos", icon: FileSignature },
   { title: "Acessos", url: "/acessos", icon: Key },
   { title: "Rede & VPN", url: "/rede", icon: Network },
+  { title: "Rotinas", url: "/rotinas", icon: CheckSquare },
   { title: "Wiki", url: "/wiki", icon: BookOpen },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];

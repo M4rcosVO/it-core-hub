@@ -11,6 +11,7 @@ import Wiki from "@/pages/Wiki";
 import Configuracoes from "@/pages/Configuracoes";
 import Acessos from "@/pages/Acessos";
 import Contratos from "@/pages/Contratos";
+import Rotinas from "@/pages/Rotinas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/acessos" element={<Acessos />} />
             <Route path="/contratos" element={<Contratos />} />
             <Route path="/wiki" element={<Wiki />} />
+            <Route path="/rotinas" element={<Rotinas />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
           </Route>
           <Route path="*" element={<NotFound />} />
