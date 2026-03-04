@@ -5,6 +5,7 @@ import {
   BookOpen,
   Settings,
   Server,
+  Key,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -24,6 +25,7 @@ import {
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Inventário", url: "/inventario", icon: Monitor },
+  { title: "Acessos", url: "/acessos", icon: Key },
   { title: "Rede & VPN", url: "/rede", icon: Network },
   { title: "Wiki", url: "/wiki", icon: BookOpen },
   { title: "Configurações", url: "/configuracoes", icon: Settings },

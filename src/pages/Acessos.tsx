@@ -1,0 +1,176 @@
+import { useState } from "react";
+import {
+  Key,
+  Search,
+  Plus,
+  Eye,
+  EyeOff,
+  Copy,
+  ExternalLink,
+  Shield,
+  Globe,
+  Database,
+  Mail,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+
+// Mock data
+const acessosData = [
+  { id: 1, nome: "FortiGate VPN", url: "vpn.gellak.com.br", usuario: "admin.ti", senha: "SuperSecretPassword123!", categoria: "VPN", setor: "TI", icon: Shield },
+  { id: 2, nome: "Totvs Protheus", url: "192.168.1.10:8080", usuario: "admin_erp", senha: "ErpPassword2024", categoria: "ERP", setor: "Geral", icon: Database },
+  { id: 3, nome: "Painel Admin Site", url: "gellak.com.br/wp-admin", usuario: "webmaster", senha: "Wp#Admin$2024", categoria: "Web", setor: "Marketing", icon: Globe },
+  { id: 4, nome: "Office 365 Admin", url: "admin.microsoft.com", usuario: "ti@gellak.com.br", senha: "O365@Gellak2024", categoria: "E-mail", setor: "TI", icon: Mail },
+  { id: 5, nome: "OpenVPN Filial SP", url: "sp.vpn.gellak.com.br", usuario: "joao.almeida", senha: "VpnSp2024!", categoria: "VPN", setor: "Comercial", icon: Shield },
+];
+
+const categorias = ["Todas", "VPN", "ERP", "Web", "E-mail", "Banco de Dados", "Outros"];
+
+export default function Acessos() {
+  const [search, setSearch] = useState("");
+  const [categoriaFilter, setCategoriaFilter] = useState("Todas");
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
+  const { toast } = useToast();
+
+  const filteredAcessos = acessosData.filter((a) => {
+    const matchSearch = search === "" || Object.values(a).some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
+    const matchCategoria = categoriaFilter === "Todas" || a.categoria === categoriaFilter;
+    return matchSearch && matchCategoria;
+  });
+
+  const togglePasswordVisibility = (id: number) => {
+    setVisiblePasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const copyToClipboard = (text: string, type: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copiado!", description: `${type} copiada para a área de transferência.` });
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Cofre de Acessos</h1>
+          <p className="text-muted-foreground text-sm mt-1">Gestão centralizada de senhas e credenciais (VPNs, Sistemas, etc)</p>
+        </div>
+        <Button className="gap-2">
+          <Plus className="h-4 w-4" />
+          Nova Credencial
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, usuário, URL..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {categorias.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Card className="shadow-sm">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left p-3 font-medium text-muted-foreground w-[250px]">Sistema / Ferramenta</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">URL Base</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Usuário</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Senha</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Setor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAcessos.map((a) => (
+                  <tr key={a.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                    <td className="p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                          <a.icon className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{a.nome}</p>
+                          <Badge variant="outline" className="mt-1 text-[10px] uppercase">{a.categoria}</Badge>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-muted-foreground truncate max-w-[150px]">{a.url}</span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(a.url, "URL")}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        {a.url !== "—" && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                            <a href={a.url.startsWith("http") ? a.url : `https://${a.url}`} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-medium">{a.usuario}</span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(a.usuario, "Usuário")}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <div className="bg-muted px-2 py-1 rounded font-mono text-xs min-w-[120px] tracking-widest text-center">
+                          {visiblePasswords[a.id] ? a.senha : "••••••••"}
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => togglePasswordVisibility(a.id)}>
+                          {visiblePasswords[a.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(a.senha, "Senha")}>
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                    <td className="p-3 hidden md:table-cell">{a.setor}</td>
+                  </tr>
+                ))}
+                {filteredAcessos.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                      Nenhuma credencial encontrada.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
