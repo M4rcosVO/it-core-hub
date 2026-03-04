@@ -41,6 +41,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
 // Mock data
@@ -123,10 +132,57 @@ export default function Inventario() {
           <h1 className="text-2xl font-bold tracking-tight">Inventário</h1>
           <p className="text-muted-foreground text-sm mt-1">Gestão de ativos de hardware</p>
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Ativo
-        </Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              Novo Ativo
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Cadastrar Novo Ativo</DialogTitle>
+              <DialogDescription>
+                Adicione um novo hardware ou software ao inventário da TI.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Tipo de Ativo</label>
+                <Select>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="computer">Computador / Notebook</SelectItem>
+                    <SelectItem value="mobile">Smartphone / Tablet</SelectItem>
+                    <SelectItem value="peripheral">Periférico (Monitor, Impressora)</SelectItem>
+                    <SelectItem value="software">Software / Licença</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Identificador (Hostname / Modelo / Nome)</label>
+                <Input placeholder="Ex: WKS-ADM-002" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Responsável / Setor</label>
+                <Input placeholder="Ex: Financeiro" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Data de Aquisição</label>
+                  <Input type="date" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Garantia / Vencimento</label>
+                  <Input type="date" />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button">Salvar Ativo</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filters */}
@@ -337,6 +393,48 @@ export default function Inventario() {
         </TabsContent>
 
         <TabsContent value="emprestimos" className="mt-4">
+          <div className="flex justify-end mb-4">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button className="gap-2"><Plus className="h-4 w-4" />Registrar Empréstimo</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Registrar Empréstimo</DialogTitle>
+                  <DialogDescription>
+                    Registre a saída temporária de um equipamento.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Equipamento</label>
+                    <Input placeholder="Ex: Notebook NTB-COM-045" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Solicitante</label>
+                    <Input placeholder="Ex: Pedro Mendes" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Data de Retirada</label>
+                      <Input type="date" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Prev. Devolução</label>
+                      <Input type="date" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Motivo</label>
+                    <Input placeholder="Ex: Viagem, Evento..." />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button type="button">Salvar Registro</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
           <Card className="shadow-sm">
             <CardContent className="p-0">
               <div className="overflow-x-auto">

@@ -28,6 +28,8 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
+    DialogTrigger,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 
@@ -142,10 +144,57 @@ export default function Contratos() {
                         Gestão de provedores, links de internet, SLAs e garantias
                     </p>
                 </div>
-                <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Novo Contrato
-                </Button>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button className="gap-2">
+                            <Plus className="h-4 w-4" />
+                            Novo Contrato
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Adicionar Novo Contrato</DialogTitle>
+                            <DialogDescription>
+                                Cadastre um novo contrato de fornecedor de TI.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Fornecedor</label>
+                                <Input placeholder="Ex: Vivo Empresas" />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Serviço</label>
+                                <Input placeholder="Ex: Link Dedicado" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Vencimento</label>
+                                    <Input type="date" />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Valor Mensal</label>
+                                    <Input placeholder="R$ 0,00" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Tipo</label>
+                                <Select>
+                                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Conectividade">Conectividade</SelectItem>
+                                        <SelectItem value="Equipamentos">Equipamentos</SelectItem>
+                                        <SelectItem value="Software/Cloud">Software/Cloud</SelectItem>
+                                        <SelectItem value="Serviços">Serviços</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button type="button">Salvar Contrato</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             {/* Filters */}
