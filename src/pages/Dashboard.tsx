@@ -16,30 +16,84 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-const kpis = [
-  { label: "Computadores", value: 5, icon: Monitor, trend: "4 Ativos, 1 Manutenção" },
-  { label: "Disp. Móveis", value: 3, icon: Smartphone, trend: "1 Desativado" },
-  { label: "Softwares (Licenças)", value: 58, icon: AppWindow, trend: "52 em uso" },
-  { label: "Contratos Ativos", value: 4, icon: FileSignature, trend: "1 Crítico (Dell)" },
-  { label: "Itens Cofre/Rede", value: 6, icon: Key, trend: "2 VPNs configuradas" },
-  { label: "IPs em Uso", value: 89, icon: Globe, trend: "de 254 disponíveis" },
-];
-
-const statusChecks = [
-  { name: "Link Internet Primário", status: "online" as const, provider: "Vivo Fibra" },
-  { name: "Link Backup", status: "online" as const, provider: "Claro Dedicado" },
-  { name: "Servidor de Dados (ERP)", status: "offline" as const, provider: "SRV-ERP-01" },
-];
-
-const alerts = [
-  { id: 1, message: "Contrato Dell ProSupport vence em (20/11/2024)", type: "warning" as const, date: "Contratos" },
-  { id: 2, message: "Licença Adobe Creative Cloud atinge (5/5) uso", type: "warning" as const, date: "Softwares" },
-  { id: 3, message: "Manutenção do NTB-COM-045 finalizada com sucesso", type: "success" as const, date: "Inventário (Ontem)" },
-  { id: 4, message: "Novo acesso 'FortiGate VPN' registrado no cofre", type: "info" as const, date: "Acessos (Ontem)" },
-  { id: 5, message: "Uso da licença Office 365 E3 em 90%", type: "warning" as const, date: "Softwares (Hoje)" },
-];
+import { computers, mobiles, softwares, emprestimos } from "./Inventario";
+import { contratosData } from "./Contratos";
+import { acessosData } from "./Acessos";
+import { ipList } from "./Rede";
 
 export default function Dashboard() {
+  // --- DYNAMIC KPIs CALCULATION ---
+  const activeComps = computers.filter(c => c.status === "Ativo").length;
+  const maintComps = computers.filter(c => c.status === "Em Manutenção").length;
+
+  const activeMobiles = mobiles.filter(m => m.status === "Ativo").length;
+  const inactiveMobiles = mobiles.filter(m => m.status === "Desativado").length;
+
+  const totalSoftwareQtd = softwares.reduce((acc, curr) => acc + curr.qtd, 0);
+  const totalSoftwareAssigned = softwares.reduce((acc, curr) => acc + curr.assigned, 0);
+
+  const activeContracts = contratosData.filter(c => c.status === "Ativo").length;
+  const criticalContracts = contratosData.filter(c => c.status === "Crítico").length;
+
+  const totalAcessos = acessosData.length;
+  const vpnAcessos = acessosData.filter(a => a.categoria === "VPN").length;
+
+  const totalIps = ipList.length;
+
+  const kpis = [
+    { label: "Computadores", value: activeComps, icon: Monitor, trend: `${activeComps} Ativos, ${maintComps} Manutenção` },
+    { label: "Disp. Móveis", value: activeMobiles, icon: Smartphone, trend: `${inactiveMobiles} Desativado(s)` },
+    { label: "Softwares (Licenças)", value: totalSoftwareQtd, icon: AppWindow, trend: `${totalSoftwareAssigned} em uso` },
+    { label: "Contratos Ativos", value: activeContracts, icon: FileSignature, trend: `${criticalContracts} Crítico(s)` },
+    { label: "Itens Cofre/Rede", value: totalAcessos, icon: Key, trend: `${vpnAcessos} VPN(s) config.` },
+    { label: "IPs em Uso", value: totalIps, icon: Globe, trend: "Monitorados no IPAM" },
+  ];
+
+  // --- DYNAMIC STATUS CHECKS ---
+  // Mocking status logic based on Contracts and Network
+  const primaryLink = contratosData.find(c => c.fornecedor.includes("Vivo"));
+  const backupLink = contratosData.find(c => c.fornecedor.includes("Claro"));
+  const erpServer = computers.find(c => c.hostname.includes("ERP"));
+
+  const statusChecks = [
+    { name: "Link Internet Primário", status: primaryLink?.status === "Crítico" ? "offline" : "online", provider: primaryLink?.fornecedor || "N/A" },
+    { name: "Link Backup", status: "online", provider: backupLink?.fornecedor || "N/A" },
+    { name: "Servidor de Dados (ERP)", status: erpServer?.status === "Em Manutenção" ? "offline" : "online", provider: erpServer?.hostname || "N/A" },
+  ];
+
+  // --- DYNAMIC ALERTS ---
+  const alerts = [];
+
+  // Contracts Alerts
+  contratosData.forEach(c => {
+    if (c.status === "Crítico" || c.status === "Atenção") {
+      alerts.push({ id: `crt-${c.id}`, message: `Contrato ${c.fornecedor} vence em ${c.vencimento}`, type: c.status === "Crítico" ? "warning" : "info", date: "Contratos" });
+    }
+  });
+
+  // Software Limits
+  softwares.forEach(s => {
+    const uso = s.assigned / s.qtd;
+    if (uso >= 0.9) {
+      alerts.push({ id: `sw-${s.id}`, message: `Uso da licença ${s.nome} atingiu ${Math.round(uso * 100)}%`, type: uso >= 1 ? "warning" : "info", date: "Softwares" });
+    }
+  });
+
+  // Loans Late
+  emprestimos.forEach(e => {
+    if (e.status === "Atrasado") {
+      alerts.push({ id: `emp-${e.id}`, message: `Empréstimo de ${e.equipamento} para ${e.solicitante} está Atrasado!`, type: "warning", date: "Inventário" });
+    }
+  });
+
+  // Network Offline (Mocked)
+  if (primaryLink?.status === "Crítico") {
+    alerts.push({ id: "link-down", message: `Queda no link principal detectada (${primaryLink.fornecedor})`, type: "warning", date: "Rede" });
+  }
+
+  // Se houver poucos alertas, garante que os mais importantes (Warnings) fiquem em cima
+  alerts.sort((a, b) => (a.type === "warning" ? -1 : 1));
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -116,15 +170,20 @@ export default function Dashboard() {
                 key={alert.id}
                 className="flex items-start gap-3 rounded-lg border p-3"
               >
-                {alert.type === "warning" && <FileWarning className="h-4 w-4 text-warning mt-0.5 shrink-0" />}
+                {alert.type === "warning" && <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />}
                 {alert.type === "success" && <CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" />}
-                {alert.type === "info" && <Monitor className="h-4 w-4 text-info mt-0.5 shrink-0" />}
+                {alert.type === "info" && <FileWarning className="h-4 w-4 text-info mt-0.5 shrink-0" />}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm leading-snug">{alert.message}</p>
                   <p className="text-xs text-muted-foreground mt-1">{alert.date}</p>
                 </div>
               </div>
             ))}
+            {alerts.length === 0 && (
+              <div className="text-center py-6 text-muted-foreground text-sm">
+                Nenhum alerta crítico no momento.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

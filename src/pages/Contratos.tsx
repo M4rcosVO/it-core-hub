@@ -109,6 +109,8 @@ const contratosData = [
 
 const tiposContrato = ["Todos", "Conectividade", "Equipamentos", "Software/Cloud", "Serviços"];
 
+export { contratosData };
+
 export default function Contratos() {
     const [search, setSearch] = useState("");
     const [tipoFilter, setTipoFilter] = useState("Todos");

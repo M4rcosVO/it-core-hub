@@ -51,6 +51,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import QRCode from "react-qr-code";
 
 // Mock data
 const computers = [
@@ -87,6 +88,8 @@ const emprestimos = [
 ];
 
 const setores = ["Todos", "Administrativo", "Financeiro", "Comercial", "RH", "TI"];
+
+export { computers, mobiles, peripherals, softwares, emprestimos };
 
 export default function Inventario() {
   const [search, setSearch] = useState("");
@@ -621,10 +624,42 @@ export default function Inventario() {
 
               <Separator />
 
-              <Button variant="outline" className="w-full gap-2" onClick={handleGenerateQR}>
-                <QrCode className="h-4 w-4" />
-                Gerar QR Code do Ativo
-              </Button>
+              <Separator />
+
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full gap-2">
+                    <QrCode className="h-4 w-4" />
+                    Visualizar QR Code de Patrimônio
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle className="text-center">Etiqueta de Patrimônio</DialogTitle>
+                    <DialogDescription className="text-center">
+                      Escaneie para acessar o prontuário deste ativo no sistema.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex flex-col items-center justify-center py-6">
+                    <div className="bg-white p-4 rounded-xl border shadow-sm">
+                      <QRCode
+                        value={`GELLAK-ASSET-${selectedAsset.id}-${assetType}`}
+                        size={180}
+                        level="H"
+                      />
+                    </div>
+                    <p className="mt-4 font-mono text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+                      ID: GLK-{selectedAsset.id}-{assetType?.substring(0, 3)}
+                    </p>
+                  </div>
+                  <DialogFooter className="sm:justify-center">
+                    <Button variant="default" className="w-full gap-2" onClick={handleGenerateQR}>
+                      <Printer className="h-4 w-4" />
+                      Imprimir Etiqueta
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
         </SheetContent>

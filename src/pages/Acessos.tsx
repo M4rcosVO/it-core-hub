@@ -45,6 +45,8 @@ const acessosData = [
 
 const categorias = ["Todas", "VPN", "ERP", "Web", "E-mail", "Banco de Dados", "Outros"];
 
+export { acessosData };
+
 export default function Acessos() {
   const [search, setSearch] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("Todas");

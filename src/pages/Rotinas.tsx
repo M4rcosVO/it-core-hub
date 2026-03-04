@@ -15,7 +15,8 @@ import {
     Edit2,
     Save,
     X,
-    GripVertical
+    GripVertical,
+    Printer
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -384,6 +385,10 @@ export default function Rotinas() {
                                     <Button variant="outline" size="sm" className="gap-1.5" onClick={() => copyToClipboard(selectedRoutine)}>
                                         <Copy className="w-3.5 h-3.5" />
                                         Copiar
+                                    </Button>
+                                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => window.print()}>
+                                        <Printer className="w-3.5 h-3.5" />
+                                        Imprimir / PDF
                                     </Button>
                                     <Button variant="outline" size="sm" className="gap-1.5" onClick={() => resetChecklist(selectedRoutine.id)}>
                                         <RotateCcw className="w-3.5 h-3.5" />

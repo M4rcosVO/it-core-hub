@@ -6,6 +6,9 @@ import {
   Search,
   Shield,
   Mail,
+  Sun,
+  Moon,
+  Settings2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,6 +37,17 @@ const auditLogs = [
 
 export default function Configuracoes() {
   const [searchLog, setSearchLog] = useState("");
+  const [theme, setTheme] = useState(document.documentElement.classList.contains("dark") ? "dark" : "light");
+
+  const toggleTheme = () => {
+    if (theme === "light") {
+      document.documentElement.classList.add("dark");
+      setTheme("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      setTheme("light");
+    }
+  };
 
   const filteredLogs = auditLogs.filter(
     (log) =>
@@ -49,8 +63,12 @@ export default function Configuracoes() {
         <p className="text-muted-foreground text-sm mt-1">Gestão da equipe e log de auditoria</p>
       </div>
 
-      <Tabs defaultValue="equipe">
+      <Tabs defaultValue="geral">
         <TabsList>
+          <TabsTrigger value="geral" className="gap-2">
+            <Settings2 className="h-4 w-4" />
+            Geral
+          </TabsTrigger>
           <TabsTrigger value="equipe" className="gap-2">
             <Users className="h-4 w-4" />
             Equipe TI
@@ -60,6 +78,25 @@ export default function Configuracoes() {
             Auditoria
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="geral" className="mt-4 space-y-4">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">Aparência e Tema</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-sm">Modo Escuro (Dark Mode)</h4>
+                  <p className="text-xs text-muted-foreground mt-1">Alterne entre o tema claro e escuro para a interface.</p>
+                </div>
+                <Button variant="outline" size="icon" onClick={toggleTheme}>
+                  {theme === "dark" ? <Sun className="h-4 w-4 text-warning" /> : <Moon className="h-4 w-4 text-muted-foreground" />}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="equipe" className="mt-4 space-y-4">
           <div className="flex justify-end">
