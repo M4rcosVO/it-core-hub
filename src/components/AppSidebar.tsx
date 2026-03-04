@@ -6,6 +6,7 @@ import {
   Settings,
   Server,
   Key,
+  FileSignature,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -25,6 +26,7 @@ import {
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Inventário", url: "/inventario", icon: Monitor },
+  { title: "Contratos", url: "/contratos", icon: FileSignature },
   { title: "Acessos", url: "/acessos", icon: Key },
   { title: "Rede & VPN", url: "/rede", icon: Network },
   { title: "Wiki", url: "/wiki", icon: BookOpen },
