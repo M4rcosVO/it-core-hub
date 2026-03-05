@@ -15,8 +15,8 @@ export const computers = [
 
 // Inventário – Celulares / Tablets
 export const mobiles = [
-    { id: 1, modelo: "iPhone 13 128GB", imei: "354612109876543", chip: "Vivo - (11) 91234-5678", responsavel: "Gerente Comercial", status: "Ativo", patrimonio: "TI-MOB-001" },
-    { id: 2, modelo: "Samsung Galaxy A54", imei: "490154203237518", chip: "Claro - (11) 98765-4321", responsavel: "Equipe de Campo", status: "Disponível", patrimonio: "TI-MOB-002" },
+    { id: 1, modelo: "iPhone 13 128GB", imei: "354612109876543", chip: "Vivo - (11) 91234-5678", responsavel: "Gerente Comercial", status: "Ativo", patrimonio: "TI-MOB-001", historico: [{ evento: "Entrega do Ativo", data: "10/01/2024", usuario: "Admin TI" }] },
+    { id: 2, modelo: "Samsung Galaxy A54", imei: "490154203237518", chip: "Claro - (11) 98765-4321", responsavel: "Equipe de Campo", status: "Disponível", patrimonio: "TI-MOB-002", historico: [{ evento: "Devolução", data: "01/03/2026", usuario: "Camila Souza" }] },
 ];
 
 // Inventário – Softwares
@@ -36,9 +36,9 @@ export const emprestimos = [
 
 // Inventário – Periféricos
 export const peripherals = [
-    { id: 1, tipo: "Impressora", modelo: "HP LaserJet M404dn", serial: "CNB4G12345", setor: "Administrativo", status: "Ativo", ip: "192.168.1.50", patrimonio: "TI-PER-001" },
-    { id: 2, tipo: "Scanner", modelo: "Fujitsu ScanSnap iX1600", serial: "SCN2024001", setor: "Financeiro", status: "Ativo", ip: "192.168.1.55", patrimonio: "TI-PER-002" },
-    { id: 3, tipo: "Switch", modelo: "Cisco Catalyst 9300", serial: "FHH2412345", setor: "Datacenter", status: "Ativo", ip: "10.0.10.2", patrimonio: "TI-PER-003" },
+    { id: 1, tipo: "Impressora", modelo: "HP LaserJet M404dn", serial: "CNB4G12345", setor: "Administrativo", status: "Ativo", ip: "192.168.1.50", patrimonio: "TI-PER-001", historico: [{ evento: "Instalação", data: "05/01/2025", usuario: "Rafael Lima" }] },
+    { id: 2, tipo: "Scanner", modelo: "Fujitsu ScanSnap iX1600", serial: "SCN2024001", setor: "Financeiro", status: "Ativo", ip: "192.168.1.55", patrimonio: "TI-PER-002", historico: [{ evento: "Instalação", data: "12/03/2024", usuario: "Admin TI" }] },
+    { id: 3, tipo: "Switch", modelo: "Cisco Catalyst 9300", serial: "FHH2412345", setor: "Datacenter", status: "Ativo", ip: "10.0.10.2", patrimonio: "TI-PER-003", historico: [{ evento: "Instalação no Rack 01", data: "20/06/2024", usuario: "Rafael Lima" }] },
 ];
 
 // Cofre de Acessos

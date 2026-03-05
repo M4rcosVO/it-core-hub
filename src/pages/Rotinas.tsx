@@ -16,7 +16,10 @@ import {
     Save,
     X,
     GripVertical,
-    Printer
+    Printer,
+    LayoutGrid,
+    LayoutList,
+    Clock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,7 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 type CheckTask = {
     id: string;
     label: string;
-    done: boolean;
+    status: "pending" | "doing" | "done";
 };
 
 type Routine = {
@@ -50,13 +53,13 @@ const initialRoutines: Routine[] = [
         descricao: "Passos necessários para configurar acessos e equipamentos de um novo colaborador.",
         icone: UserPlus,
         tasks: [
-            { id: "t1", label: "Criação de e-mail corporativo", done: false },
-            { id: "t2", label: "Criação de usuário no Active Directory (AD)", done: false },
-            { id: "t3", label: "Incluir em grupos de distribuição de e-mail", done: false },
-            { id: "t4", label: "Acesso à rede Wi-Fi / VPN (se aplicável)", done: false },
-            { id: "t5", label: "Preparação de Máquina + Periféricos", done: false },
-            { id: "t6", label: "Instalação do pacote Office e Antivírus", done: false },
-            { id: "t7", label: "Geração de Termo de Responsabilidade", done: false },
+            { id: "t1", label: "Criação de e-mail corporativo", status: "pending" },
+            { id: "t2", label: "Criação de usuário no Active Directory (AD)", status: "pending" },
+            { id: "t3", label: "Incluir em grupos de distribuição de e-mail", status: "pending" },
+            { id: "t4", label: "Acesso à rede Wi-Fi / VPN (se aplicável)", status: "pending" },
+            { id: "t5", label: "Preparação de Máquina + Periféricos", status: "pending" },
+            { id: "t6", label: "Instalação do pacote Office e Antivírus", status: "pending" },
+            { id: "t7", label: "Geração de Termo de Responsabilidade", status: "pending" },
         ],
     },
     {
@@ -66,13 +69,13 @@ const initialRoutines: Routine[] = [
         descricao: "Checklist de segurança para revogar acessos na saída do funcionário.",
         icone: UserMinus,
         tasks: [
-            { id: "t1", label: "Alterar senha e desabilitar usuário no AD", done: false },
-            { id: "t2", label: "Ocultar rede do e-mail corporativo", done: false },
-            { id: "t3", label: "Converter e-mail para caixa compartilhada (se solicitado pelo gestor)", done: false },
-            { id: "t4", label: "Revogação de acesso a ERPs e Sistemas Web", done: false },
-            { id: "t5", label: "Desconectar contas do Office 365 e Adobe CC", done: false },
-            { id: "t6", label: "Recolher Equipamentos de TI", done: false },
-            { id: "t7", label: "Arquivar Termo de Devolução no Inventário", done: false },
+            { id: "t1", label: "Alterar senha e desabilitar usuário no AD", status: "pending" },
+            { id: "t2", label: "Ocultar rede do e-mail corporativo", status: "pending" },
+            { id: "t3", label: "Converter e-mail para caixa compartilhada (se solicitado pelo gestor)", status: "pending" },
+            { id: "t4", label: "Revogação de acesso a ERPs e Sistemas Web", status: "pending" },
+            { id: "t5", label: "Desconectar contas do Office 365 e Adobe CC", status: "pending" },
+            { id: "t6", label: "Recolher Equipamentos de TI", status: "pending" },
+            { id: "t7", label: "Arquivar Termo de Devolução no Inventário", status: "pending" },
         ],
     },
     {
@@ -82,13 +85,13 @@ const initialRoutines: Routine[] = [
         descricao: "Ações guiadas ao substituir um notebook ou desktop de um usuário.",
         icone: Laptop,
         tasks: [
-            { id: "t1", label: "Configurar o Sistema Operacional na máquina nova", done: false },
-            { id: "t2", label: "Fazer backup dos arquivos da máquina antiga (OneDrive ou Externo)", done: false },
-            { id: "t3", label: "Fazer backup e reinstalar certificados digitais (A1/A3)", done: false },
-            { id: "t4", label: "Trocar equipamento fisicamente na mesa do usuário", done: false },
-            { id: "t5", label: "Atualizar Inventário: Novo -> 'Em Uso'", done: false },
-            { id: "t6", label: "Atualizar Inventário: Antigo -> 'Em Manutenção' ou 'Estoque'", done: false },
-            { id: "t7", label: "Recolher assinatura no novo Termo de Responsabilidade", done: false },
+            { id: "t1", label: "Configurar o Sistema Operacional na máquina nova", status: "pending" },
+            { id: "t2", label: "Fazer backup dos arquivos da máquina antiga (OneDrive ou Externo)", status: "pending" },
+            { id: "t3", label: "Fazer backup e reinstalar certificados digitais (A1/A3)", status: "pending" },
+            { id: "t4", label: "Trocar equipamento fisicamente na mesa do usuário", status: "pending" },
+            { id: "t5", label: "Atualizar Inventário: Novo -> 'Em Uso'", status: "pending" },
+            { id: "t6", label: "Atualizar Inventário: Antigo -> 'Em Manutenção' ou 'Estoque'", status: "pending" },
+            { id: "t7", label: "Recolher assinatura no novo Termo de Responsabilidade", status: "pending" },
         ],
     },
 ];
@@ -97,6 +100,7 @@ export default function Rotinas() {
     const [routines, setRoutines] = useState<Routine[]>(initialRoutines);
     const [search, setSearch] = useState("");
     const [selectedRoutineId, setSelectedRoutineId] = useState<number | null>(initialRoutines[0].id);
+    const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
     const { toast } = useToast();
 
     // Editor States
@@ -160,12 +164,29 @@ export default function Rotinas() {
         }
     };
 
+    const updateTaskStatus = (routineId: number, taskId: string, newStatus: CheckTask["status"]) => {
+        setRoutines(prev => prev.map(r => {
+            if (r.id === routineId) {
+                return {
+                    ...r,
+                    tasks: r.tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t)
+                };
+            }
+            return r;
+        }));
+    };
+
     const toggleTask = (routineId: number, taskId: string) => {
         setRoutines(prev => prev.map(r => {
             if (r.id === routineId) {
                 return {
                     ...r,
-                    tasks: r.tasks.map(t => t.id === taskId ? { ...t, done: !t.done } : t)
+                    tasks: r.tasks.map(t => {
+                        if (t.id === taskId) {
+                            return { ...t, status: t.status === "done" ? "pending" : "done" };
+                        }
+                        return t;
+                    })
                 };
             }
             return r;
@@ -177,7 +198,7 @@ export default function Rotinas() {
             if (r.id === routineId) {
                 return {
                     ...r,
-                    tasks: r.tasks.map(t => ({ ...t, done: false }))
+                    tasks: r.tasks.map(t => ({ ...t, status: "pending" }))
                 };
             }
             return r;
@@ -185,7 +206,7 @@ export default function Rotinas() {
     };
 
     const copyToClipboard = (routine: Routine) => {
-        const text = `${routine.titulo}\n\n` + routine.tasks.map(t => `[${t.done ? 'x' : ' '}] ${t.label}`).join("\n");
+        const text = `${routine.titulo}\n\n` + routine.tasks.map(t => `[${t.status === 'done' ? 'x' : t.status === 'doing' ? '/' : ' '}] ${t.label}`).join("\n");
         navigator.clipboard.writeText(text);
         toast({ title: "Checklist copiado!", description: `"${routine.titulo}" foi copiado para a área de transferência.` });
     };
@@ -330,7 +351,7 @@ export default function Rotinas() {
                                     <Button variant="secondary" size="sm" onClick={() => {
                                         setEditForm({
                                             ...editForm,
-                                            tasks: [...editForm.tasks, { id: `new_${Date.now()}`, label: "", done: false }]
+                                            tasks: [...editForm.tasks, { id: `new_${Date.now()}`, label: "", status: "pending" }]
                                         })
                                     }}>
                                         <Plus className="w-4 h-4 mr-1" /> Adicionar Passo
@@ -411,10 +432,31 @@ export default function Rotinas() {
                             </div>
                         </CardHeader>
                         <Separator />
-                        <CardContent className="pt-6">
+                        <CardContent className="pt-6 overflow-hidden">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex bg-muted p-1 rounded-lg">
+                                    <Button
+                                        variant={viewMode === "list" ? "secondary" : "ghost"}
+                                        size="sm"
+                                        className="h-8 px-3 gap-2"
+                                        onClick={() => setViewMode("list")}
+                                    >
+                                        <LayoutList className="h-4 w-4" /> Lista
+                                    </Button>
+                                    <Button
+                                        variant={viewMode === "kanban" ? "secondary" : "ghost"}
+                                        size="sm"
+                                        className="h-8 px-3 gap-2"
+                                        onClick={() => setViewMode("kanban")}
+                                    >
+                                        <LayoutGrid className="h-4 w-4" /> Kanban
+                                    </Button>
+                                </div>
+                            </div>
+
                             {/* Progress bar - feature #10 */}
                             {selectedRoutine.tasks.length > 0 && (() => {
-                                const done = selectedRoutine.tasks.filter(t => t.done).length;
+                                const done = selectedRoutine.tasks.filter(t => t.status === "done").length;
                                 const total = selectedRoutine.tasks.length;
                                 const pct = Math.round((done / total) * 100);
                                 return (
@@ -427,25 +469,78 @@ export default function Rotinas() {
                                     </div>
                                 );
                             })()}
-                            <div className="space-y-4 pl-1">
-                                {selectedRoutine.tasks.map((task) => (
-                                    <div
-                                        key={task.id}
-                                        className="flex items-start gap-3 group cursor-pointer"
-                                        onClick={() => toggleTask(selectedRoutine.id, task.id)}
-                                    >
-                                        <button className={`mt-0.5 transition-colors focus:outline-none ${task.done ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}`}>
-                                            {task.done ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                                        </button>
-                                        <span className={`text-sm md:text-base leading-snug transition-all ${task.done
-                                            ? 'text-muted-foreground line-through opacity-70'
-                                            : 'text-foreground font-medium'
-                                            }`}>
-                                            {task.label}
-                                        </span>
+
+                            {viewMode === "list" ? (
+                                <div className="space-y-4 pl-1">
+                                    {selectedRoutine.tasks.map((task) => (
+                                        <div
+                                            key={task.id}
+                                            className="flex items-start gap-3 group cursor-pointer"
+                                            onClick={() => toggleTask(selectedRoutine.id, task.id)}
+                                        >
+                                            <button className={`mt-0.5 transition-colors focus:outline-none ${task.status === "done" ? 'text-primary' : 'text-muted-foreground group-hover:text-primary'}`}>
+                                                {task.status === "done" ? <CheckSquare className="w-5 h-5" /> : task.status === "doing" ? <Clock className="w-5 h-5 text-warning" /> : <Square className="w-5 h-5" />}
+                                            </button>
+                                            <span className={`text-sm md:text-base leading-snug transition-all ${task.status === "done"
+                                                ? 'text-muted-foreground line-through opacity-70'
+                                                : 'text-foreground font-medium'
+                                                }`}>
+                                                {task.label}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full pb-6">
+                                    {/* PENDENTE */}
+                                    <div className="bg-muted/30 rounded-lg p-3 border border-dashed">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
+                                            <Square className="h-3 w-3" /> Pendente
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {selectedRoutine.tasks.filter(t => t.status === "pending").map(task => (
+                                                <Card key={task.id} className="p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-muted-foreground" onClick={() => updateTaskStatus(selectedRoutine.id, task.id, "doing")}>
+                                                    <p className="text-sm font-medium leading-tight">{task.label}</p>
+                                                    <Button variant="ghost" size="sm" className="w-full mt-2 h-7 text-[10px] text-primary">Começar →</Button>
+                                                </Card>
+                                            ))}
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
+
+                                    {/* EM EXECUÇÃO */}
+                                    <div className="bg-warning/5 rounded-lg p-3 border border-warning/20">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-warning mb-4 flex items-center gap-2">
+                                            <Clock className="h-3 w-3" /> Em Execução
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {selectedRoutine.tasks.filter(t => t.status === "doing").map(task => (
+                                                <Card key={task.id} className="p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-warning" onClick={() => updateTaskStatus(selectedRoutine.id, task.id, "done")}>
+                                                    <p className="text-sm font-medium leading-tight">{task.label}</p>
+                                                    <div className="flex gap-2 mt-2">
+                                                        <Button variant="ghost" size="sm" className="flex-1 h-7 text-[10px]" onClick={(e) => { e.stopPropagation(); updateTaskStatus(selectedRoutine.id, task.id, "pending"); }}>← Voltar</Button>
+                                                        <Button variant="ghost" size="sm" className="flex-1 h-7 text-[10px] text-success" onClick={(e) => { e.stopPropagation(); updateTaskStatus(selectedRoutine.id, task.id, "done"); }}>Concluir ✓</Button>
+                                                    </div>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* CONCLUÍDO */}
+                                    <div className="bg-success/5 rounded-lg p-3 border border-success/20">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-success mb-4 flex items-center gap-2">
+                                            <CheckSquare className="h-3 w-3" /> Concluído
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {selectedRoutine.tasks.filter(t => t.status === "done").map(task => (
+                                                <Card key={task.id} className="p-3 shadow-sm opacity-60 border-l-4 border-l-success">
+                                                    <p className="text-sm font-medium leading-tight line-through text-muted-foreground">{task.label}</p>
+                                                    <Button variant="ghost" size="sm" className="w-full mt-2 h-7 text-[10px]" onClick={() => updateTaskStatus(selectedRoutine.id, task.id, "doing")}>Reabrir</Button>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 ) : (

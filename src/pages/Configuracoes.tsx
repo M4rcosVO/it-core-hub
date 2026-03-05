@@ -9,6 +9,9 @@ import {
   Sun,
   Moon,
   Settings2,
+  Lock,
+  ChevronRight,
+  ShieldCheck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +26,30 @@ const teamMembers = [
   { id: 2, nome: "Rafael Lima", email: "rafael.l@gellak.com", cargo: "Analista de Infraestrutura", status: "Ativo" },
   { id: 3, nome: "Camila Souza", email: "camila.s@gellak.com", cargo: "Suporte N1", status: "Ativo" },
   { id: 4, nome: "Diego Martins", email: "diego.m@gellak.com", cargo: "Analista de Segurança", status: "Inativo" },
+];
+
+const accessProfiles = [
+  {
+    id: 1,
+    nome: "Administrador",
+    descricao: "Controle total sobre todos os módulos e configurações do sistema.",
+    usuarios: 2,
+    permissoes: ["Inventário", "Rede", "Contratos", "Wiki", "Acessos", "Configurações"]
+  },
+  {
+    id: 2,
+    nome: "Técnico N1",
+    descricao: "Visualização e edição básica de ativos e rotinas. Sem acesso a configurações.",
+    usuarios: 5,
+    permissoes: ["Inventário", "Wiki", "Rotinas"]
+  },
+  {
+    id: 3,
+    nome: "Auditor",
+    descricao: "Acesso de somente leitura para logs e relatórios.",
+    usuarios: 1,
+    permissoes: ["Auditoria", "Inventário (Leitura)"]
+  },
 ];
 
 const auditLogs = [
@@ -63,6 +90,10 @@ export default function Configuracoes() {
           <TabsTrigger value="equipe" className="gap-2">
             <Users className="h-4 w-4" />
             Equipe TI
+          </TabsTrigger>
+          <TabsTrigger value="perfis" className="gap-2">
+            <Lock className="h-4 w-4" />
+            Perfis de Acesso
           </TabsTrigger>
           <TabsTrigger value="auditoria" className="gap-2">
             <ClipboardList className="h-4 w-4" />
@@ -120,6 +151,53 @@ export default function Configuracoes() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="perfis" className="mt-4 space-y-4">
+          <div className="flex justify-between items-center">
+            <p className="text-xs text-muted-foreground">Configure o que cada perfil pode ver ou editar no IT Core Hub.</p>
+            <Button className="gap-2" size="sm" variant="outline"><Plus className="h-3.5 w-3.5" />Novo Perfil</Button>
+          </div>
+          <div className="space-y-4">
+            {accessProfiles.map((role) => (
+              <Card key={role.id} className="shadow-sm hover:border-primary/50 transition-colors">
+                <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-primary" />
+                      <h4 className="font-bold text-sm tracking-tight">{role.nome}</h4>
+                      <Badge variant="secondary" className="text-[10px] font-normal">{role.usuarios} usuários</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground max-w-md">{role.descricao}</p>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {role.permissoes.map((p, i) => (
+                        <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-muted/30">
+                          {p}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 md:border-l md:pl-4">
+                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground hover:text-primary">
+                      <Settings2 className="h-3.5 w-3.5" /> Configurar
+                    </Button>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            <Card className="shadow-sm border-dashed bg-muted/20">
+              <CardContent className="p-8 flex flex-col items-center justify-center text-center space-y-3">
+                <div className="p-3 bg-background rounded-full border shadow-sm">
+                  <ShieldCheck className="h-6 w-6 text-muted-foreground/40" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold">Segurança e RBAC</h4>
+                  <p className="text-xs text-muted-foreground max-w-[280px]">As permissões são aplicadas em tempo real em todos os módulos para garantir integridade dos dados.</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 

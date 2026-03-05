@@ -24,6 +24,9 @@ import {
   Network,
   GitGraph,
   Layers,
+  Printer as PrintIcon,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -73,7 +76,25 @@ export default function Inventario() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
   const [assetType, setAssetType] = useState<"computer" | "mobile" | "peripheral" | "software" | null>(null);
+  const [selectedForPrint, setSelectedForPrint] = useState<number[]>([]);
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const { toast } = useToast();
+
+  const togglePrintSelection = (id: number) => {
+    setSelectedForPrint(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    );
+  };
+
+  const assetsToPrint = [
+    ...computers,
+    ...mobiles,
+    ...peripherals
+  ].filter(a => selectedForPrint.includes(a.id));
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   const filteredComputers = computers.filter((c) => {
     const matchSearch = search === "" || Object.values(c).some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
@@ -223,12 +244,110 @@ export default function Inventario() {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" className="w-full sm:w-auto gap-2" onClick={handleExportCSV}>
-          <Download className="h-4 w-4" />
-          Exportar CSV
-        </Button>
+        <div className="flex gap-2">
+          {selectedForPrint.length > 0 && (
+            <Button variant="outline" className="gap-2 border-primary text-primary" onClick={() => setIsPrintDialogOpen(true)}>
+              <PrintIcon className="h-4 w-4" />
+              Etiquetas ({selectedForPrint.length})
+            </Button>
+          )}
+          <Button variant="outline" className="gap-2" onClick={handleExportCSV}>
+            <Download className="h-4 w-4" />
+            Exportar CSV
+          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Novo Ativo
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Cadastrar Novo Ativo</DialogTitle>
+                <DialogDescription>
+                  Adicione um novo hardware ou software ao inventário da TI.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Tipo de Ativo</label>
+                  <Select>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="computer">Computador / Notebook</SelectItem>
+                      <SelectItem value="mobile">Smartphone / Tablet</SelectItem>
+                      <SelectItem value="peripheral">Periférico (Monitor, Impressora)</SelectItem>
+                      <SelectItem value="software">Software / Licença</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Identificador (Hostname / Modelo / Nome)</label>
+                  <Input placeholder="Ex: WKS-ADM-002" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Responsável / Setor</label>
+                  <Input placeholder="Ex: Financeiro" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Data de Aquisição</label>
+                    <Input type="date" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Garantia / Vencimento</label>
+                    <Input type="date" />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button">Salvar Ativo</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
+      <Dialog open={isPrintDialogOpen} onOpenChange={setIsPrintDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PrintIcon className="h-5 w-5" /> Gerador de Etiquetas em Lote
+            </DialogTitle>
+            <DialogDescription>
+              Visualize e imprima as etiquetas dos ativos selecionados. Use 'Ctrl + P' ou o botão Imprimir.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 py-8 print:p-0 print:grid-cols-3 print:gap-4 print:block">
+            {assetsToPrint.map((asset) => (
+              <div key={asset.id} className="border-2 border-black p-4 rounded-none flex flex-col items-center justify-center space-y-2 bg-white text-black print:page-break-inside-avoid print:mb-8 print:border print:w-[6cm] print:h-[4cm] print:inline-flex mx-auto">
+                <div className="text-[10px] font-bold uppercase tracking-tighter text-center line-clamp-1 w-full border-b border-black pb-1 mb-1">
+                  GELLAK IT - {asset.patrimonio || `ID: ${asset.id}`}
+                </div>
+                <div className="flex items-center gap-3 w-full">
+                  <div className="bg-white p-1">
+                    <QRCode value={`https://it.gellak.com.br/asset/${asset.id}`} size={64} />
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-[11px] font-bold truncate leading-none">{(asset as any).modelo || (asset as any).nome}</p>
+                    <p className="text-[9px] text-gray-700 truncate">{(asset as any).setor || "Estoque"}</p>
+                    <p className="text-[8px] font-mono mt-1 opacity-70">SN: {(asset as any).serial || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter className="print:hidden">
+            <Button variant="ghost" onClick={() => setSelectedForPrint([])}>Limpar Seleção</Button>
+            <Button onClick={handlePrint} className="gap-2">
+              <PrintIcon className="h-4 w-4" /> Imprimir Etiquetas
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Tabs defaultValue="computers">
         <TabsList>
           <TabsTrigger value="computers" className="gap-2">
@@ -264,9 +383,12 @@ export default function Inventario() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="w-[40px] p-3 text-center">
+                        <PrintIcon className="h-3 w-3 inline" />
+                      </th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Hostname</th>
                       <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Processador</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">RAM</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Patrimônio</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Setor</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Responsável</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Termo</th>
@@ -276,11 +398,19 @@ export default function Inventario() {
                     {filteredComputers.map((c) => (
                       <tr
                         key={c.id}
-                        className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                        className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors ${selectedForPrint.includes(c.id) ? 'bg-primary/5' : ''}`}
                         onClick={() => openDetail(c, "computer")}
                       >
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => togglePrintSelection(c.id)}
+                            className={`p-1 rounded border transition-colors ${selectedForPrint.includes(c.id) ? 'bg-primary border-primary text-primary-foreground' : 'text-muted-foreground border-border hover:border-primary'}`}
+                          >
+                            {selectedForPrint.includes(c.id) ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+                          </button>
+                        </td>
                         <td className="p-3 font-mono text-xs font-medium">{c.hostname}</td>
-                        <td className="p-3 hidden md:table-cell">{c.processor}</td>
+                        <td className="p-3 hidden md:table-cell">{c.processador}</td>
                         <td className="p-3 hidden lg:table-cell">{c.ram}</td>
                         <td className="p-3">{c.setor}</td>
                         <td className="p-3">{c.responsavel}</td>
@@ -305,29 +435,36 @@ export default function Inventario() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="w-[40px] p-3 text-center">
+                        <PrintIcon className="h-3 w-3 inline" />
+                      </th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Modelo</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Telefone</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Operadora</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">IMEI</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Chip</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Responsável</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Termo</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Patrimônio</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredMobiles.map((m) => (
                       <tr
                         key={m.id}
-                        className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                        className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors ${selectedForPrint.includes(m.id) ? 'bg-primary/5' : ''}`}
                         onClick={() => openDetail(m, "mobile")}
                       >
-                        <td className="p-3 font-medium">{m.modelo}</td>
-                        <td className="p-3 hidden md:table-cell font-mono text-xs">{m.telefone}</td>
-                        <td className="p-3">{m.operadora}</td>
-                        <td className="p-3">{m.responsavel}</td>
-                        <td className="p-3">
-                          <Badge variant={m.termoAssinado ? "default" : "destructive"} className={m.termoAssinado ? "bg-success hover:bg-success/90" : ""}>
-                            {m.termoAssinado ? "Assinado" : "Pendente"}
-                          </Badge>
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => togglePrintSelection(m.id)}
+                            className={`p-1 rounded border transition-colors ${selectedForPrint.includes(m.id) ? 'bg-primary border-primary text-primary-foreground' : 'text-muted-foreground border-border hover:border-primary'}`}
+                          >
+                            {selectedForPrint.includes(m.id) ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+                          </button>
                         </td>
+                        <td className="p-3 font-medium">{m.modelo}</td>
+                        <td className="p-3 hidden md:table-cell font-mono text-xs">{m.imei}</td>
+                        <td className="p-3">{m.chip}</td>
+                        <td className="p-3">{m.responsavel}</td>
+                        <td className="p-3 hidden lg:table-cell text-muted-foreground font-mono text-xs">{m.patrimonio}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -344,6 +481,9 @@ export default function Inventario() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="w-[40px] p-3 text-center">
+                        <PrintIcon className="h-3 w-3 inline" />
+                      </th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Tipo</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Modelo</th>
                       <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Serial</th>
@@ -355,9 +495,17 @@ export default function Inventario() {
                     {filteredPeripherals.map((p) => (
                       <tr
                         key={p.id}
-                        className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                        className={`border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors ${selectedForPrint.includes(p.id) ? 'bg-primary/5' : ''}`}
                         onClick={() => openDetail(p, "peripheral")}
                       >
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => togglePrintSelection(p.id)}
+                            className={`p-1 rounded border transition-colors ${selectedForPrint.includes(p.id) ? 'bg-primary border-primary text-primary-foreground' : 'text-muted-foreground border-border hover:border-primary'}`}
+                          >
+                            {selectedForPrint.includes(p.id) ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+                          </button>
+                        </td>
                         <td className="p-3">{p.tipo}</td>
                         <td className="p-3 font-medium">{p.modelo}</td>
                         <td className="p-3 hidden md:table-cell font-mono text-xs">{p.serial}</td>
@@ -466,6 +614,9 @@ export default function Inventario() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
+                      <th className="w-[40px] p-3 text-center">
+                        <PrintIcon className="h-3 w-3 inline" />
+                      </th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Equipamento</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Solicitante</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Retirada</th>
@@ -476,7 +627,15 @@ export default function Inventario() {
                   </thead>
                   <tbody>
                     {emprestimos.map((e) => (
-                      <tr key={e.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                      <tr key={e.id} className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${selectedForPrint.includes(e.id) ? 'bg-primary/5' : ''}`}>
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => togglePrintSelection(e.id)}
+                            className={`p-1 rounded border transition-colors ${selectedForPrint.includes(e.id) ? 'bg-primary border-primary text-primary-foreground' : 'text-muted-foreground border-border hover:border-primary'}`}
+                          >
+                            {selectedForPrint.includes(e.id) ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+                          </button>
+                        </td>
                         <td className="p-3 font-medium">{e.equipamento}</td>
                         <td className="p-3">{e.solicitante}</td>
                         <td className="p-3 font-mono text-xs text-muted-foreground">{e.dataRetirada}</td>
@@ -559,30 +718,30 @@ export default function Inventario() {
               {assetType === "computer" && (
                 <div className="space-y-4">
                   <DetailRow label="Hostname" value={selectedAsset.hostname} mono />
-                  <DetailRow label="Processador" value={selectedAsset.processor} />
+                  <DetailRow label="Tipo" value={selectedAsset.tipo} />
+                  <DetailRow label="Modelo" value={selectedAsset.modelo} mono />
+                  <DetailRow label="Patrimônio" value={selectedAsset.patrimonio} mono />
+                  <DetailRow label="Processador" value={selectedAsset.processador} />
                   <DetailRow label="Memória RAM" value={selectedAsset.ram} />
-                  <DetailRow label="Armazenamento" value={selectedAsset.storage} />
-                  <DetailRow label="Service Tag" value={selectedAsset.serviceTag} mono />
-                  <DetailRow label="Data de Compra" value={selectedAsset.dataCompra} />
-                  <DetailRow label="Vencimento Garantia" value={selectedAsset.garantia} />
-                  <DetailRow label="Setor" value={selectedAsset.setor} />
+                  <DetailRow label="Armazenamento" value={selectedAsset.armazenamento} />
+                  <DetailRow label="Sist. Operacional" value={selectedAsset.so} />
                   <DetailRow label="Responsável" value={selectedAsset.responsavel} />
-                  <DetailRow label="Localização" value={selectedAsset.localizacao} />
+                  <DetailRow label="Setor" value={selectedAsset.setor} />
+                  <DetailRow label="Status" value={selectedAsset.status} />
+                  <DetailRow label="Garantia" value={selectedAsset.garantiaVencimento} />
+                  <DetailRow label="Compra" value={selectedAsset.dataCompra} />
                 </div>
               )}
 
               {/* Mobile details */}
               {assetType === "mobile" && (
                 <div className="space-y-4">
-                  <DetailRow label="Modelo" value={selectedAsset.modelo} />
-                  <DetailRow label="IMEI 1" value={selectedAsset.imei1} mono />
-                  <DetailRow label="IMEI 2" value={selectedAsset.imei2} mono />
-                  <DetailRow label="Telefone" value={selectedAsset.telefone} mono />
-                  <DetailRow label="Operadora" value={selectedAsset.operadora} />
-                  <DetailRow label="Data de Compra" value={selectedAsset.dataCompra} />
-                  <DetailRow label="Vencimento Garantia" value={selectedAsset.garantia} />
-                  <DetailRow label="Conta Vinculada" value={selectedAsset.conta} mono />
+                  <DetailRow label="Modelo" value={selectedAsset.modelo} mono />
+                  <DetailRow label="Patrimônio" value={selectedAsset.patrimonio} mono />
+                  <DetailRow label="IMEI" value={selectedAsset.imei} mono />
+                  <DetailRow label="Chip / Linha" value={selectedAsset.chip} />
                   <DetailRow label="Responsável" value={selectedAsset.responsavel} />
+                  <DetailRow label="Status" value={selectedAsset.status} />
                 </div>
               )}
 
@@ -592,10 +751,8 @@ export default function Inventario() {
                   <DetailRow label="Tipo" value={selectedAsset.tipo} />
                   <DetailRow label="Modelo" value={selectedAsset.modelo} />
                   <DetailRow label="Serial" value={selectedAsset.serial} mono />
-                  <DetailRow label="Data de Compra" value={selectedAsset.dataCompra} />
-                  <DetailRow label="Vencimento Garantia" value={selectedAsset.garantia} />
+                  <DetailRow label="Patrimônio" value={selectedAsset.patrimonio} mono />
                   <DetailRow label="Setor" value={selectedAsset.setor} />
-                  <DetailRow label="Localização" value={selectedAsset.localizacao} />
                   <DetailRow label="IP" value={selectedAsset.ip} mono />
                 </div>
               )}

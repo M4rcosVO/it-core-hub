@@ -24,6 +24,12 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { usePrivacy } from "@/components/PrivacyContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAudit } from "@/components/AuditContext";
@@ -431,38 +437,101 @@ export default function Rede() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/10">
-                        <th className="text-left p-3 font-medium text-muted-foreground pl-6 w-24">Porta</th>
-                        <th className="text-left p-3 font-medium text-muted-foreground w-24">Link</th>
-                        <th className="text-center p-3 font-medium text-muted-foreground w-20">VLAN</th>
-                        <th className="text-left p-3 font-medium text-muted-foreground">Dispositivo Conectado / Patch Panel</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sw.portas.map((porta, idx) => (
-                        <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
-                          <td className="p-3 pl-6 font-mono font-medium">{porta.porta}</td>
-                          <td className="p-3">
-                            <span className={`flex items-center gap-1.5 text-xs font-medium ${porta.status === 'up' ? 'text-success' : 'text-muted-foreground opacity-50'}`}>
-                              <Activity className="w-3.5 h-3.5" />
-                              {porta.status.toUpperCase()}
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <Badge variant={porta.vlan === "Trunk" ? "default" : "secondary"} className="font-mono">
-                              {porta.vlan}
-                            </Badge>
-                          </td>
-                          <td className={`p-3 ${porta.conectado === 'Livre' ? 'text-muted-foreground italic' : 'font-medium'}`}>
-                            {porta.conectado}
-                          </td>
+                <CardContent className="p-6">
+                  {/* Visual Port Map */}
+                  <div className="mb-8 overflow-x-auto pb-4">
+                    <div className="min-w-[700px]">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Mapa Portas Frontais</h4>
+                        <div className="flex items-center gap-4 text-[10px] font-medium uppercase text-muted-foreground">
+                          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-success" /> UP</div>
+                          <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-muted-foreground/30" /> DOWN</div>
+                          <div className="flex items-center gap-1"><div className="w-2 h-2 bg-primary w-2 h-2" /> TRUNK</div>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-900 p-4 rounded-md border-4 border-slate-800 shadow-xl ring-1 ring-white/10">
+                        <TooltipProvider>
+                          <div className="grid grid-cols-12 gap-2">
+                            {/* Generative grid for 24 ports simulation */}
+                            {Array.from({ length: 24 }).map((_, i) => {
+                              const portNum = i + 1;
+                              const portData = sw.portas.find(p => p.porta === String(portNum) || p.porta.endsWith(`/${portNum}`)) || { status: 'down', vlan: 0, conectado: 'Livre' };
+                              return (
+                                <Tooltip key={i}>
+                                  <TooltipTrigger asChild>
+                                    <div className="group relative">
+                                      <div className={`h-10 w-full rounded border-2 flex items-center justify-center transition-all cursor-crosshair
+                                        ${portData.status === 'up' ? 'bg-success/20 border-success shadow-[0_0_10px_rgba(34,197,94,0.3)]' : 'bg-slate-800 border-slate-700'}
+                                        ${portData.vlan === 'Trunk' ? 'border-primary' : ''}
+                                      `}>
+                                        <div className={`w-3 h-3 rounded-sm border border-black/20 ${portData.status === 'up' ? 'bg-success animate-pulse' : 'bg-slate-900'}`} />
+                                      </div>
+                                      <div className="text-[9px] text-center mt-1 font-mono text-slate-400 group-hover:text-white transition-colors">
+                                        {portNum}
+                                      </div>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="bottom" className="p-3 max-w-[200px]">
+                                    <div className="space-y-1.5">
+                                      <div className="flex items-center justify-between gap-4">
+                                        <span className="text-xs font-bold">Porta {portNum}</span>
+                                        <Badge variant={portData.status === 'up' ? 'default' : 'secondary'} className="text-[10px] uppercase h-4">
+                                          {portData.status}
+                                        </Badge>
+                                      </div>
+                                      <div className="text-[10px]">
+                                        <p className="text-muted-foreground uppercase font-bold tracking-tighter">Conectado:</p>
+                                        <p className="font-medium text-foreground">{portData.conectado}</p>
+                                      </div>
+                                      <div className="text-[10px] flex justify-between border-t pt-1.5 mt-1.5">
+                                        <span className="text-muted-foreground uppercase font-bold">VLAN:</span>
+                                        <span className="font-mono text-primary">{portData.vlan}</span>
+                                      </div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            })}
+                          </div>
+                        </TooltipProvider>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto border-t">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-muted/10">
+                          <th className="text-left p-3 font-medium text-muted-foreground pl-6 w-24">Porta</th>
+                          <th className="text-left p-3 font-medium text-muted-foreground w-24">Link</th>
+                          <th className="text-center p-3 font-medium text-muted-foreground w-20">VLAN</th>
+                          <th className="text-left p-3 font-medium text-muted-foreground">Dispositivo Conectado / Patch Panel</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {sw.portas.map((porta, idx) => (
+                          <tr key={idx} className="border-b last:border-0 hover:bg-muted/30">
+                            <td className="p-3 pl-6 font-mono font-medium">{porta.porta}</td>
+                            <td className="p-3">
+                              <span className={`flex items-center gap-1.5 text-xs font-medium ${porta.status === 'up' ? 'text-success' : 'text-muted-foreground opacity-50'}`}>
+                                <Activity className="w-3.5 h-3.5" />
+                                {porta.status.toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <Badge variant={porta.vlan === "Trunk" ? "default" : "secondary"} className="font-mono">
+                                {porta.vlan}
+                              </Badge>
+                            </td>
+                            <td className={`p-3 ${porta.conectado === 'Livre' ? 'text-muted-foreground italic' : 'font-medium'}`}>
+                              {porta.conectado}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </CardContent>
               </Card>
             ))}
