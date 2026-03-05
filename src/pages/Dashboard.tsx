@@ -50,11 +50,11 @@ export default function Dashboard() {
   // Mocking status logic based on Contracts and Network
   const primaryLink = contratosData.find(c => c.fornecedor.includes("Vivo"));
   const backupLink = contratosData.find(c => c.fornecedor.includes("Claro"));
-  const erpServer = computers.find(c => c.hostname.includes("ERP"));
+  const erpServer = computers.find(c => c.hostname === "SRV-ERP-01");
 
   const statusChecks = [
     { name: "Link Internet Primário", status: primaryLink?.status === "Crítico" ? "offline" : "online", provider: primaryLink?.fornecedor || "N/A" },
-    { name: "Link Backup", status: "online", provider: backupLink?.fornecedor || "N/A" },
+    { name: "Link Backup (Failover)", status: backupLink?.status === "Atenção" ? "degraded" : "online", provider: backupLink?.fornecedor || "N/A" },
     { name: "Servidor de Dados (ERP)", status: erpServer?.status === "Em Manutenção" ? "offline" : "online", provider: erpServer?.hostname || "N/A" },
   ];
 

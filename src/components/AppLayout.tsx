@@ -52,7 +52,10 @@ export function AppLayout() {
               {/* Fake Search Input Trigger */}
               <div
                 className="hidden md:flex items-center gap-2 bg-muted/50 hover:bg-muted/80 transition-colors px-3 py-1.5 rounded-md border text-sm text-muted-foreground w-64 cursor-text"
-                onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'k', 'metaKey': true }))}
+                onClick={() => {
+                  // Fire both ctrlKey (Windows/Linux) and metaKey (Mac) so GlobalSearch catches it
+                  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+                }}
               >
                 <Search className="h-4 w-4 shrink-0" />
                 <span className="flex-1 truncate text-left">Buscar ou pular para...</span>

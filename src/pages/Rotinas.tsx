@@ -23,6 +23,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
 
 // Typings for our standard checklists
 type CheckTask = {
@@ -95,6 +97,7 @@ export default function Rotinas() {
     const [routines, setRoutines] = useState<Routine[]>(initialRoutines);
     const [search, setSearch] = useState("");
     const [selectedRoutineId, setSelectedRoutineId] = useState<number | null>(initialRoutines[0].id);
+    const { toast } = useToast();
 
     // Editor States
     const [isEditing, setIsEditing] = useState(false);
@@ -184,6 +187,7 @@ export default function Rotinas() {
     const copyToClipboard = (routine: Routine) => {
         const text = `${routine.titulo}\n\n` + routine.tasks.map(t => `[${t.done ? 'x' : ' '}] ${t.label}`).join("\n");
         navigator.clipboard.writeText(text);
+        toast({ title: "Checklist copiado!", description: `"${routine.titulo}" foi copiado para a área de transferência.` });
     };
 
     const getCategoryColor = (cat: string) => {
@@ -408,6 +412,21 @@ export default function Rotinas() {
                         </CardHeader>
                         <Separator />
                         <CardContent className="pt-6">
+                            {/* Progress bar - feature #10 */}
+                            {selectedRoutine.tasks.length > 0 && (() => {
+                                const done = selectedRoutine.tasks.filter(t => t.done).length;
+                                const total = selectedRoutine.tasks.length;
+                                const pct = Math.round((done / total) * 100);
+                                return (
+                                    <div className="mb-6 space-y-2">
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                            <span>{done} de {total} passos concluídos</span>
+                                            <span className={`font-bold ${pct === 100 ? 'text-success' : 'text-primary'}`}>{pct}%</span>
+                                        </div>
+                                        <Progress value={pct} className="h-2" />
+                                    </div>
+                                );
+                            })()}
                             <div className="space-y-4 pl-1">
                                 {selectedRoutine.tasks.map((task) => (
                                     <div

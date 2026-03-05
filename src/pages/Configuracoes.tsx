@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useTheme } from "@/components/ThemeContext";
 
 const teamMembers = [
   { id: 1, nome: "Lucas Ferreira", email: "lucas.f@gellak.com", cargo: "Coordenador de TI", status: "Ativo" },
@@ -37,17 +38,7 @@ const auditLogs = [
 
 export default function Configuracoes() {
   const [searchLog, setSearchLog] = useState("");
-  const [theme, setTheme] = useState(document.documentElement.classList.contains("dark") ? "dark" : "light");
-
-  const toggleTheme = () => {
-    if (theme === "light") {
-      document.documentElement.classList.add("dark");
-      setTheme("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      setTheme("light");
-    }
-  };
+  const { theme, toggleTheme } = useTheme();
 
   const filteredLogs = auditLogs.filter(
     (log) =>

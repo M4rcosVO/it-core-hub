@@ -37,8 +37,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { usePrivacy } from "@/components/PrivacyContext";
 
-// Mock data
-const acessosData = [
+// Mock data starting set (now managed as state inside the component)
+const initialAcessos = [
   { id: 1, nome: "FortiGate VPN", url: "vpn.gellak.com.br", usuario: "admin.ti", senha: "SuperSecretPassword123!", categoria: "VPN", setor: "TI", icon: Shield },
   { id: 2, nome: "Totvs Protheus", url: "192.168.1.10:8080", usuario: "admin_erp", senha: "ErpPassword2024", categoria: "ERP", setor: "Geral", icon: Database },
   { id: 3, nome: "Painel Admin Site", url: "gellak.com.br/wp-admin", usuario: "webmaster", senha: "Wp#Admin$2024", categoria: "Web", setor: "Marketing", icon: Globe },
@@ -49,12 +49,19 @@ const acessosData = [
 const categorias = ["Todas", "VPN", "ERP", "Web", "E-mail", "Banco de Dados", "Outros"];
 
 export default function Acessos() {
+  const [acessosData, setAcessosData] = useState(initialAcessos);
   const [search, setSearch] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("Todas");
   const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  // States para o modal de nova credencial
+  // Form states for new credential
+  const [newNome, setNewNome] = useState("");
+  const [newUrl, setNewUrl] = useState("");
+  const [newUsuario, setNewUsuario] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newCategoria, setNewCategoria] = useState("");
+  const [newSetor, setNewSetor] = useState("");
 
   const { toast } = useToast();
   const { isPrivacyMode } = usePrivacy();
@@ -82,29 +89,38 @@ export default function Acessos() {
     }
     setNewPassword(password);
     navigator.clipboard.writeText(password);
-    toast({
-      title: "Senha Gerada!",
-      description: "Uma senha forte de 16 caracteres foi gerada e copiada para a área de transferência."
-    });
+    toast({ title: "Senha Gerada!", description: "Senha forte de 16 caracteres gerada e copiada." });
+  };
+
+  const handleSaveCredential = () => {
+    if (!newNome.trim() || !newUsuario.trim()) {
+      toast({ title: "Campos obrigatórios", description: "Preencha pelo menos o Nome e o Usuário.", variant: "destructive" });
+      return;
+    }
+    const iconMap: Record<string, typeof Shield> = { VPN: Shield, ERP: Database, Web: Globe, "E-mail": Mail };
+    const newEntry = {
+      id: Date.now(),
+      nome: newNome,
+      url: newUrl || "—",
+      usuario: newUsuario,
+      senha: newPassword || "—",
+      categoria: newCategoria || "Outros",
+      setor: newSetor || "—",
+      icon: iconMap[newCategoria] ?? Key,
+    };
+    setAcessosData((prev) => [...prev, newEntry]);
+    // Reset form
+    setNewNome(""); setNewUrl(""); setNewUsuario(""); setNewPassword(""); setNewCategoria(""); setNewSetor("");
+    setDialogOpen(false);
+    toast({ title: "Credencial salva!", description: `'${newEntry.nome}' adicionada ao cofre.` });
   };
 
   const handleExportCSV = () => {
     if (filteredAcessos.length === 0) return;
-
-    // Converte para CSV omitindo o icone (objeto indisponível para texto simples)
     const headers = ["ID", "Sistema/Nome", "URL", "Usuário", "Senha", "Categoria", "Setor"].join(",");
     const rows = filteredAcessos.map(a =>
-      [
-        a.id,
-        `"${a.nome}"`,
-        `"${a.url}"`,
-        `"${a.usuario}"`,
-        `"${a.senha}"`,
-        `"${a.categoria}"`,
-        `"${a.setor}"`
-      ].join(",")
+      [a.id, `"${a.nome}"`, `"${a.url}"`, `"${a.usuario}"`, `"${a.senha}"`, `"${a.categoria}"`, `"${a.setor}"`].join(",")
     ).join("\n");
-
     const csvContent = "data:text/csv;charset=utf-8,%EF%BB%BF" + encodeURIComponent(headers + "\n" + rows);
     const link = document.createElement("a");
     link.setAttribute("href", csvContent);
@@ -112,12 +128,9 @@ export default function Acessos() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    toast({
-      title: "Exportação Concluída",
-      description: "O arquivo CSV dos acessos foi baixado com sucesso.",
-    });
+    toast({ title: "Exportação Concluída", description: "O arquivo CSV dos acessos foi baixado com sucesso." });
   };
+
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -126,7 +139,7 @@ export default function Acessos() {
           <h1 className="text-2xl font-bold tracking-tight">Cofre de Acessos</h1>
           <p className="text-muted-foreground text-sm mt-1">Gestão centralizada de senhas e credenciais (VPNs, Sistemas, etc)</p>
         </div>
-        <Dialog>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
@@ -142,44 +155,33 @@ export default function Acessos() {
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Nome do Sistema / Ferramenta</label>
-                <Input placeholder="Ex: FortiGate VPN" />
+                <label className="text-sm font-medium">Nome do Sistema / Ferramenta *</label>
+                <Input placeholder="Ex: FortiGate VPN" value={newNome} onChange={(e) => setNewNome(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">URL Base</label>
-                <Input placeholder="Ex: vpn.empresa.com.br" />
+                <Input placeholder="Ex: vpn.empresa.com.br" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Usuário</label>
-                  <Input placeholder="Ex: admin" />
+                  <label className="text-sm font-medium">Usuário *</label>
+                  <Input placeholder="Ex: admin" value={newUsuario} onChange={(e) => setNewUsuario(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-medium">Senha</label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs gap-1.5 text-muted-foreground hover:text-primary"
-                      onClick={generateStrongPassword}
-                    >
+                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-xs gap-1.5 text-muted-foreground hover:text-primary" onClick={generateStrongPassword}>
                       <Dices className="h-3 w-3" />
                       Gerar Forte
                     </Button>
                   </div>
-                  <Input
-                    type="text"
-                    placeholder="••••••••"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
+                  <Input type="text" placeholder="••••••••" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Categoria</label>
-                  <Select>
+                  <Select value={newCategoria} onValueChange={setNewCategoria}>
                     <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="VPN">VPN</SelectItem>
@@ -193,12 +195,13 @@ export default function Acessos() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Setor</label>
-                  <Input placeholder="Ex: TI" />
+                  <Input placeholder="Ex: TI" value={newSetor} onChange={(e) => setNewSetor(e.target.value)} />
                 </div>
               </div>
             </div>
             <DialogFooter>
-              <Button type="button">Salvar Credencial</Button>
+              <Button variant="outline" type="button" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <Button type="button" onClick={handleSaveCredential}>Salvar Credencial</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
