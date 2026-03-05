@@ -18,11 +18,13 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAudit } from "@/components/AuditContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { BarChart, PieChart } from "@/components/InventoryCharts";
 
-import { computers, mobiles, softwares, emprestimos, contratosData, acessosData, ipList } from "@/data/mockData";
+import { computers, mobiles, softwares, emprestimos, contratosData, acessosData, ipList, setores } from "@/data/mockData";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -99,6 +101,19 @@ export default function Dashboard() {
   // Se houver poucos alertas, garante que os mais importantes (Warnings) fiquem em cima
   alerts.sort((a, b) => (a.type === "warning" ? -1 : 1));
 
+  // --- BI CHART DATA ---
+  const computersBySector = setores.filter(s => s !== "Todos").map(s => ({
+    label: s,
+    value: computers.filter(c => c.setor === s).length,
+    color: s === "TI" ? "#3b82f6" : s === "Financeiro" ? "#10b981" : s === "Administrativo" ? "#f59e0b" : "#6366f1"
+  }));
+
+  const assetsByStatus = [
+    { label: "Ativo", value: [...computers, ...mobiles].filter(a => a.status === "Ativo").length, color: "#10b981" },
+    { label: "Manutenção", value: [...computers, ...mobiles].filter(a => a.status === "Em Manutenção").length, color: "#f59e0b" },
+    { label: "Estoque", value: [...computers, ...mobiles].filter(a => a.status === "Estoque").length, color: "#3b82f6" },
+  ];
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -107,6 +122,31 @@ export default function Dashboard() {
           Visão geral do ambiente de TI
         </p>
       </div>
+
+      {/* Central de Alertas - Proactive notifications */}
+      {alerts.filter(a => a.type === 'warning').length > 0 && (
+        <Card className="bg-destructive/5 border-destructive/20 shadow-sm animate-in slide-in-from-top-4 duration-500 overflow-hidden">
+          <div className="flex h-1 bg-destructive/20 w-full overflow-hidden">
+            <div className="h-full bg-destructive animate-pulse w-1/3" />
+          </div>
+          <CardContent className="p-4 flex items-start gap-4">
+            <div className="p-2 bg-destructive/10 rounded-full ring-4 ring-destructive/5">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-sm font-bold text-destructive flex items-center gap-2">
+                Atenção: {alerts.filter(a => a.type === 'warning').length} itens críticos detectados
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Existem contratos vencendo e ativos em manutenção que requerem sua atenção imediata na gestão do parque.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={() => navigate('/inventario')}>
+              Gerenciar Tudo
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* KPI Cards - clickable, route to module */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -127,6 +167,53 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* BI Analytics Section */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
+          <BarChart title="Computadores por Setor" data={computersBySector} />
+          <PieChart title="Disponibilidade Global" data={assetsByStatus} />
+        </div>
+
+        {/* Alerts & Critical Items */}
+        <Card className="shadow-sm border-l-4 border-l-destructive">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Ações Necessárias
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[320px] pr-4">
+              <div className="space-y-4">
+                {alerts.length > 0 ? (
+                  alerts.map((alert) => (
+                    <div key={alert.id} className="flex gap-4 p-3 rounded-lg bg-accent/20 border border-accent/30 group hover:border-primary/30 transition-all">
+                      <div className={`mt-1 h-2 w-2 rounded-full ${alert.type === 'warning' ? 'bg-destructive animate-pulse' : 'bg-primary'}`} />
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <p className="text-sm font-medium">{alert.message}</p>
+                          <Badge variant="outline" className="text-[9px] uppercase tracking-tighter">{alert.date}</Badge>
+                        </div>
+                        <div className="flex items-center gap-4 mt-2">
+                          <Button variant="link" className="p-0 h-auto text-xs text-primary font-bold group-hover:underline" onClick={() => navigate(alert.date === 'Contratos' ? '/contratos' : '/inventario')}>
+                            Resolver Agora
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-48 text-muted-foreground opacity-40">
+                    <CheckCircle2 className="h-10 w-10 mb-2" />
+                    <p className="text-sm">Parabéns! Nenhuma pendência crítica.</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

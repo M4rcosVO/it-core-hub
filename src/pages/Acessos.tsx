@@ -38,6 +38,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { usePrivacy } from "@/components/PrivacyContext";
 import { useAuth } from "@/components/AuthContext";
+import { useAudit } from "@/components/AuditContext";
 
 const initialAcessos = [
   { id: 1, nome: "FortiGate VPN", url: "vpn.gellak.com.br", usuario: "admin.ti", senha: "SuperSecretPassword123!", categoria: "VPN", setor: "TI", icon: Shield },
@@ -69,6 +70,7 @@ export default function Acessos() {
 
   const { toast } = useToast();
   const { isPrivacyMode } = usePrivacy();
+  const { addLog } = useAudit();
 
   if (!isAdmin) {
     return (
@@ -139,7 +141,17 @@ export default function Acessos() {
     setAcessosData((prev) => [...prev, newEntry]);
     setNewNome(""); setNewUrl(""); setNewUsuario(""); setNewPassword(""); setNewCategoria(""); setNewSetor("");
     setDialogOpen(false);
-    toast({ title: "Credencial salva!", description: `'${newEntry.nome}' adicionada ao cofre.` });
+    toast({
+      title: "Credencial Adicionada",
+      description: `Acesso para ${newNome} criado com sucesso.`,
+    });
+
+    addLog({
+      user: "Administrador",
+      action: "Adição de Credencial",
+      details: `Adicionou nova credencial: ${newNome} (${newCategoria})`,
+      module: 'Acessos'
+    });
   };
 
   const handleExportCSV = () => {

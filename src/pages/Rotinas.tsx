@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { useAudit } from "@/components/AuditContext";
 
 // Typings for our standard checklists
 type CheckTask = {
@@ -102,6 +103,7 @@ export default function Rotinas() {
     const [selectedRoutineId, setSelectedRoutineId] = useState<number | null>(initialRoutines[0].id);
     const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
     const { toast } = useToast();
+    const { addLog } = useAudit();
 
     // Editor States
     const [isEditing, setIsEditing] = useState(false);
@@ -167,9 +169,23 @@ export default function Rotinas() {
     const updateTaskStatus = (routineId: number, taskId: string, newStatus: CheckTask["status"]) => {
         setRoutines(prev => prev.map(r => {
             if (r.id === routineId) {
+                const currentRoutine = prev.find(routine => routine.id === routineId); // Find the routine to get its title
                 return {
                     ...r,
-                    tasks: r.tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t)
+                    tasks: r.tasks.map(t => {
+                        if (t.id === taskId) {
+                            if (newStatus === "done" && t.status !== "done") { // Log only if status changes TO "done"
+                                addLog({
+                                    user: "Usuário Logado", // Replace with actual logged-in user
+                                    action: "Tarefa Concluída",
+                                    details: `Concluiu item: "${t.label}" na rotina "${currentRoutine?.titulo}"`,
+                                    module: 'Rotinas'
+                                });
+                            }
+                            return { ...t, status: newStatus };
+                        }
+                        return t;
+                    })
                 };
             }
             return r;
@@ -179,11 +195,21 @@ export default function Rotinas() {
     const toggleTask = (routineId: number, taskId: string) => {
         setRoutines(prev => prev.map(r => {
             if (r.id === routineId) {
+                const currentRoutine = prev.find(routine => routine.id === routineId); // Find the routine to get its title
                 return {
                     ...r,
                     tasks: r.tasks.map(t => {
                         if (t.id === taskId) {
-                            return { ...t, status: t.status === "done" ? "pending" : "done" };
+                            const newStatus = t.status === "done" ? "pending" : "done";
+                            if (newStatus === "done" && t.status !== "done") { // Log only if status changes TO "done"
+                                addLog({
+                                    user: "Usuário Logado", // Replace with actual logged-in user
+                                    action: "Tarefa Concluída",
+                                    details: `Concluiu item: "${t.label}" na rotina "${currentRoutine?.titulo}"`,
+                                    module: 'Rotinas'
+                                });
+                            }
+                            return { ...t, status: newStatus };
                         }
                         return t;
                     })

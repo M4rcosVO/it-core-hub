@@ -71,11 +71,12 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import QRCode from "react-qr-code";
-import { computers, mobiles, peripherals, softwares, emprestimos } from "@/data/mockData";
+import { computers, mobiles, peripherals, softwares, emprestimos, setores } from "@/data/mockData";
 import { useAuth } from "@/components/AuthContext";
+import { useAudit } from "@/components/AuditContext";
 import { TableSkeleton } from "@/components/LoadingSkeletons";
 
-const setores = ["Todos", "Administrativo", "Financeiro", "Comercial", "RH", "TI"];
+
 
 const dependencies = [
   { service: "ERP Gellak (Totvs)", critical: "Alta", deps: ["SRV-ERP-01 (Servidor)", "SW-CORE-01 (Switch)", "Link Vivo (Internet)"], status: "Ativo" },
@@ -95,6 +96,7 @@ export default function Inventario() {
   const [selectedForPrint, setSelectedForPrint] = useState<number[]>([]);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { addLog } = useAudit();
 
   const [selectedAuditAsset, setSelectedAuditAsset] = useState<any | null>(null);
   const [isAuditDialogOpen, setIsAuditDialogOpen] = useState(false);
@@ -115,6 +117,12 @@ export default function Inventario() {
       setSelectedAuditAsset(randomAsset);
       setIsVerifying(false);
       toast({ title: "Ativo Identificado", description: `Patrimônio ${randomAsset.patrimonio} lido com sucesso.` });
+      addLog({
+        user: "Usuário Logado", // Fallback until actual user name is available
+        action: "Auditoria QR",
+        details: `Escaneou ativo ${randomAsset.patrimonio} (${(randomAsset as any).hostname || (randomAsset as any).modelo})`,
+        module: 'Inventário'
+      });
     }, 1500);
   };
 
@@ -198,6 +206,13 @@ export default function Inventario() {
     toast({
       title: "Exportação Concluída",
       description: "O arquivo CSV foi baixado com sucesso.",
+    });
+
+    addLog({
+      user: "Usuário Logado",
+      action: "Exportação CSV",
+      details: "Exportou inventário de computadores",
+      module: 'Inventário'
     });
   };
 
@@ -556,6 +571,40 @@ export default function Inventario() {
                 <span className="text-sm font-medium">{String(val)}</span>
               </div>
             ))}
+
+            <Separator className="my-4" />
+
+            {/* Lifecycle Timeline */}
+            <div className="space-y-4 pb-8">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <History className="h-4 w-4 text-primary" />
+                Linha do Tempo do Ativo
+              </h3>
+              <div className="relative pl-4 border-l-2 border-muted space-y-6 ml-2">
+                {(selectedAsset?.historico || []).length > 0 ? (selectedAsset as any).historico.map((h: any, i: number) => (
+                  <div key={i} className="relative">
+                    <div className="absolute -left-[21px] top-1 px-1 bg-background">
+                      <div className="h-2 w-2 rounded-full bg-primary" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold">{h.evento}</span>
+                      <span className="text-[10px] text-muted-foreground">{h.data} • {h.usuario}</span>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-xs text-muted-foreground italic">Nenhum evento registrado.</div>
+                )}
+                <div className="relative">
+                  <div className="absolute -left-[21px] top-1 px-1 bg-background">
+                    <div className="h-2 w-2 rounded-full bg-muted border-2 border-primary" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold">Estado Atual: {selectedAsset?.status}</span>
+                    <span className="text-[10px] text-muted-foreground">Monitorado via IT Core Hub</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </SheetContent>
       </Sheet>

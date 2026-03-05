@@ -5,6 +5,8 @@ import { Shield, Database, Globe, Mail } from "lucide-react";
 // GlobalSearch so there are no cross-page circular deps.
 // ============================================================
 
+export const setores = ["Todos", "Administrativo", "Financeiro", "Comercial", "RH", "TI"];
+
 // Inventário – Computadores
 export const computers = [
     { id: 1, hostname: "WKS-ADM-001", modelo: "Dell OptiPlex 7090", processador: "Intel Core i7-11700", ram: "16 GB", armazenamento: "512 GB SSD", so: "Windows 11 Pro", responsavel: "Carlos Silva", setor: "Administrativo", status: "Ativo", patrimonio: "TI-001", garantiaVencimento: "15/03/2026", dataCompra: "15/03/2023", termoAssinado: true, historico: [{ evento: "Entrega ao usuário", data: "15/03/2023", usuario: "Admin TI" }, { evento: "Manutenção", data: "10/07/2024", usuario: "Suporte N2" }] },

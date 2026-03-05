@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth, Role } from "@/components/AuthContext";
+import { computers, softwares, contratosData, emprestimos } from "@/data/mockData";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -58,6 +59,10 @@ export function AppSidebar() {
   const filteredItems = menuItems.filter(item => hasPermission(item.title));
 
   const roles: Role[] = ["Administrador", "Técnico N1", "Auditor"];
+
+  // Logic to determine if there are critical alerts for badges
+  const hasInventoryAlerts = computers.some(c => c.status === "Em Manutenção") || softwares.some(s => s.assigned / s.qtd >= 0.9) || emprestimos.some(e => e.status === "Atrasado");
+  const hasContractAlerts = contratosData.some(c => c.status === "Crítico");
 
   return (
     <Sidebar collapsible="icon">
@@ -109,21 +114,30 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {filteredItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      className="gap-3 rounded-lg px-3 py-2.5 text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      activeClassName="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground font-medium"
-                    >
-                      <item.icon className="h-[18px] w-[18px] shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {filteredItems.map((item) => {
+                const isInventory = item.title === "Inventário";
+                const isContracts = item.title === "Contratos";
+                const showAlert = (isInventory && hasInventoryAlerts) || (isContracts && hasContractAlerts);
+
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild tooltip={item.title}>
+                      <NavLink
+                        to={item.url}
+                        end={item.url === "/"}
+                        className="gap-3 rounded-lg px-3 py-2.5 text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group"
+                        activeClassName="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground font-medium"
+                      >
+                        <item.icon className="h-[18px] w-[18px] shrink-0" />
+                        {!collapsed && <span className="flex-1">{item.title}</span>}
+                        {!collapsed && showAlert && (
+                          <div className="h-2 w-2 rounded-full bg-destructive animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                        )}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
