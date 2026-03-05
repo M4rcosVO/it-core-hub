@@ -25,8 +25,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { usePrivacy } from "@/components/PrivacyContext";
+import { useToast } from "@/hooks/use-toast";
+import { useAudit } from "@/components/AuditContext";
 
-const vpnUsers = [
+const initialVpnUsers = [
   { id: 1, nome: "Carlos Silva", login: "carlos.silva", status: "Ativo", criacao: "15/01/2024" },
   { id: 2, nome: "Ana Costa", login: "ana.costa", status: "Ativo", criacao: "20/03/2024" },
   { id: 3, nome: "João Almeida", login: "joao.almeida", status: "Inativo", criacao: "10/06/2023" },
@@ -34,7 +36,7 @@ const vpnUsers = [
   { id: 5, nome: "Pedro Mendes", login: "pedro.mendes", status: "Inativo", criacao: "22/11/2023" },
 ];
 
-const ipList = [
+const initialIpList = [
   { ip: "192.168.1.10", dispositivo: "SRV-ERP-01", setor: "Datacenter" },
   { ip: "192.168.1.11", dispositivo: "SRV-FILE-01", setor: "Datacenter" },
   { ip: "192.168.1.20", dispositivo: "WKS-ADM-001", setor: "Administrativo" },
@@ -82,23 +84,65 @@ const switchList = [
 ];
 
 export default function Rede() {
+  const [vpnUsers, setVpnUsers] = useState(initialVpnUsers);
+  const [ipListState, setIpListState] = useState(initialIpList);
   const [searchVpn, setSearchVpn] = useState("");
   const [searchIp, setSearchIp] = useState("");
   const [searchVlan, setSearchVlan] = useState("");
+  // VPN form
+  const [vpnDialogOpen, setVpnDialogOpen] = useState(false);
+  const [newVpnNome, setNewVpnNome] = useState("");
+  const [newVpnLogin, setNewVpnLogin] = useState("");
+  // IP form
+  const [ipDialogOpen, setIpDialogOpen] = useState(false);
+  const [newIpAddr, setNewIpAddr] = useState("");
+  const [newIpDevice, setNewIpDevice] = useState("");
+  const [newIpSetor, setNewIpSetor] = useState("");
 
   const { isPrivacyMode } = usePrivacy();
+  const { toast } = useToast();
+  const { addLog } = useAudit();
 
   const filteredVpn = vpnUsers.filter((v) =>
     searchVpn === "" || v.nome.toLowerCase().includes(searchVpn.toLowerCase()) || v.login.toLowerCase().includes(searchVpn.toLowerCase())
   );
 
-  const filteredIps = ipList.filter((i) =>
+  const filteredIps = ipListState.filter((i) =>
     searchIp === "" || Object.values(i).some((v) => v.toLowerCase().includes(searchIp.toLowerCase()))
   );
 
   const filteredVlans = vlansList.filter((v) =>
     searchVlan === "" || v.nome.toLowerCase().includes(searchVlan.toLowerCase()) || String(v.id).includes(searchVlan)
   );
+
+  const handleSaveVpn = () => {
+    if (!newVpnNome.trim() || !newVpnLogin.trim()) {
+      toast({ title: "Campos obrigatórios", description: "Preencha Nome e Login.", variant: "destructive" });
+      return;
+    }
+    const today = new Date().toLocaleDateString("pt-BR");
+    setVpnUsers(prev => [...prev, { id: Date.now(), nome: newVpnNome, login: newVpnLogin, status: "Ativo", criacao: today }]);
+    addLog({ user: "Admin", action: "VPN Criada", details: `Acesso VPN liberado para ${newVpnNome} (${newVpnLogin}).`, module: "Rede" });
+    setNewVpnNome(""); setNewVpnLogin("");
+    setVpnDialogOpen(false);
+    toast({ title: "Acesso VPN criado!", description: `Login '${newVpnLogin}' adicionado com sucesso.` });
+  };
+
+  const handleSaveIp = () => {
+    if (!newIpAddr.trim() || !newIpDevice.trim()) {
+      toast({ title: "Campos obrigatórios", description: "Preencha IP e Dispositivo.", variant: "destructive" });
+      return;
+    }
+    if (ipListState.some(i => i.ip === newIpAddr)) {
+      toast({ title: "IP já reservado", description: `O endereço ${newIpAddr} já existe no IPAM.`, variant: "destructive" });
+      return;
+    }
+    setIpListState(prev => [...prev, { ip: newIpAddr, dispositivo: newIpDevice, setor: newIpSetor || "—" }]);
+    addLog({ user: "Admin", action: "IP Reservado", details: `Reserva do IP ${newIpAddr} para o dispositivo ${newIpDevice}.`, module: "Rede" });
+    setNewIpAddr(""); setNewIpDevice(""); setNewIpSetor("");
+    setIpDialogOpen(false);
+    toast({ title: "IP Reservado!", description: `${newIpAddr} adicionado ao IPAM.` });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -133,7 +177,7 @@ export default function Rede() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar por nome ou login..." value={searchVpn} onChange={(e) => setSearchVpn(e.target.value)} className="pl-9" />
             </div>
-            <Dialog>
+            <Dialog open={vpnDialogOpen} onOpenChange={setVpnDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2"><Plus className="h-4 w-4" />Novo Acesso</Button>
               </DialogTrigger>
@@ -144,16 +188,17 @@ export default function Rede() {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Nome do Colaborador</label>
-                    <Input placeholder="Ex: Carlos Silva" />
+                    <label className="text-sm font-medium">Nome do Colaborador *</label>
+                    <Input placeholder="Ex: Carlos Silva" value={newVpnNome} onChange={(e) => setNewVpnNome(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Login AD</label>
-                    <Input placeholder="Ex: carlos.silva" />
+                    <label className="text-sm font-medium">Login AD *</label>
+                    <Input placeholder="Ex: carlos.silva" value={newVpnLogin} onChange={(e) => setNewVpnLogin(e.target.value)} />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button">Salvar Acesso</Button>
+                  <Button variant="outline" onClick={() => setVpnDialogOpen(false)}>Cancelar</Button>
+                  <Button type="button" onClick={handleSaveVpn}>Salvar Acesso</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -198,26 +243,32 @@ export default function Rede() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Buscar IP, dispositivo ou setor..." value={searchIp} onChange={(e) => setSearchIp(e.target.value)} className="pl-9" />
             </div>
-            <Dialog>
+            <Dialog open={ipDialogOpen} onOpenChange={setIpDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2"><Plus className="h-4 w-4" />Reservar IP</Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Reserva de IP</DialogTitle>
+                  <DialogDescription>Cadastre um novo endereço IP estático no IPAM.</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Dispositivo</label>
-                    <Input placeholder="Ex: Impressora RH" />
+                    <label className="text-sm font-medium">Endereço IP *</label>
+                    <Input placeholder="Ex: 192.168.1.105" value={newIpAddr} onChange={(e) => setNewIpAddr(e.target.value)} />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Endereço IP</label>
-                    <Input placeholder="Ex: 192.168.1.100" />
+                    <label className="text-sm font-medium">Dispositivo *</label>
+                    <Input placeholder="Ex: Impressora RH" value={newIpDevice} onChange={(e) => setNewIpDevice(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Setor</label>
+                    <Input placeholder="Ex: RH" value={newIpSetor} onChange={(e) => setNewIpSetor(e.target.value)} />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button">Salvar IP</Button>
+                  <Button variant="outline" onClick={() => setIpDialogOpen(false)}>Cancelar</Button>
+                  <Button type="button" onClick={handleSaveIp}>Salvar IP</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

@@ -12,13 +12,21 @@ import {
   AppWindow,
   FileSignature,
   Key,
+  ArrowRight,
+  Activity,
+  History,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
+import { useAudit } from "@/components/AuditContext";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { computers, mobiles, softwares, emprestimos, contratosData, acessosData, ipList } from "@/data/mockData";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const { logs } = useAudit();
   // --- DYNAMIC KPIs CALCULATION ---
   const activeComps = computers.filter(c => c.status === "Ativo").length;
   const maintComps = computers.filter(c => c.status === "Em Manutenção").length;
@@ -38,12 +46,12 @@ export default function Dashboard() {
   const totalIps = ipList.length;
 
   const kpis = [
-    { label: "Computadores", value: activeComps, icon: Monitor, trend: `${activeComps} Ativos, ${maintComps} Manutenção` },
-    { label: "Disp. Móveis", value: activeMobiles, icon: Smartphone, trend: `${inactiveMobiles} Desativado(s)` },
-    { label: "Softwares (Licenças)", value: totalSoftwareQtd, icon: AppWindow, trend: `${totalSoftwareAssigned} em uso` },
-    { label: "Contratos Ativos", value: activeContracts, icon: FileSignature, trend: `${criticalContracts} Crítico(s)` },
-    { label: "Itens Cofre/Rede", value: totalAcessos, icon: Key, trend: `${vpnAcessos} VPN(s) config.` },
-    { label: "IPs em Uso", value: totalIps, icon: Globe, trend: "Monitorados no IPAM" },
+    { label: "Computadores", value: activeComps, icon: Monitor, trend: `${activeComps} Ativos, ${maintComps} Manutenção`, route: "/inventario" },
+    { label: "Disp. Móveis", value: activeMobiles, icon: Smartphone, trend: `${inactiveMobiles} Desativado(s)`, route: "/inventario" },
+    { label: "Softwares (Licenças)", value: totalSoftwareQtd, icon: AppWindow, trend: `${totalSoftwareAssigned} em uso`, route: "/inventario" },
+    { label: "Contratos Ativos", value: activeContracts, icon: FileSignature, trend: `${criticalContracts} Crítico(s)`, route: "/contratos" },
+    { label: "Itens Cofre/Rede", value: totalAcessos, icon: Key, trend: `${vpnAcessos} VPN(s) config.`, route: "/acessos" },
+    { label: "IPs em Uso", value: totalIps, icon: Globe, trend: "Monitorados no IPAM", route: "/rede" },
   ];
 
   // --- DYNAMIC STATUS CHECKS ---
@@ -100,17 +108,22 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards - clickable, route to module */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {kpis.map((kpi) => (
-          <Card key={kpi.label} className="shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-4 flex flex-col items-center text-center justify-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent mb-3">
-                <kpi.icon className="h-5 w-5 text-accent-foreground" />
+          <Card
+            key={kpi.label}
+            className="shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer group"
+            onClick={() => navigate(kpi.route)}
+          >
+            <CardContent className="p-4 flex flex-col items-center text-center justify-center relative">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent mb-3 group-hover:bg-primary/10 transition-colors">
+                <kpi.icon className="h-5 w-5 text-accent-foreground group-hover:text-primary transition-colors" />
               </div>
               <p className="text-2xl font-bold tracking-tight">{kpi.value}</p>
               <p className="text-xs text-muted-foreground font-medium mt-1 uppercase tracking-wider">{kpi.label}</p>
               <p className="text-[10px] text-muted-foreground mt-2 bg-muted/50 px-2 py-0.5 rounded-full">{kpi.trend}</p>
+              <ArrowRight className="absolute top-3 right-3 h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-all" />
             </CardContent>
           </Card>
         ))}
@@ -153,34 +166,38 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Recent Alerts */}
+        {/* Activity Feed (Audit Log) */}
         <Card className="shadow-sm">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 border-b bg-muted/20">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              Alertas Recentes
+              <Activity className="h-4 w-4 text-primary" />
+              Log de Atividades
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {alerts.map((alert) => (
-              <div
-                key={alert.id}
-                className="flex items-start gap-3 rounded-lg border p-3"
-              >
-                {alert.type === "warning" && <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />}
-                {alert.type === "success" && <CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" />}
-                {alert.type === "info" && <FileWarning className="h-4 w-4 text-info mt-0.5 shrink-0" />}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm leading-snug">{alert.message}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{alert.date}</p>
-                </div>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[350px]">
+              <div className="divide-y">
+                {logs.length > 0 ? (
+                  logs.map((log) => (
+                    <div key={log.id} className="p-4 hover:bg-muted/30 transition-colors">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold bg-accent px-2 py-0.5 rounded text-accent-foreground">
+                          {log.module}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{log.timestamp}</span>
+                      </div>
+                      <p className="text-sm font-medium">{log.action}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{log.details}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                    <History className="h-8 w-8 mb-2 opacity-20" />
+                    <p className="text-sm">Nenhuma atividade registrada hoje.</p>
+                  </div>
+                )}
               </div>
-            ))}
-            {alerts.length === 0 && (
-              <div className="text-center py-6 text-muted-foreground text-sm">
-                Nenhum alerta crítico no momento.
-              </div>
-            )}
+            </ScrollArea>
           </CardContent>
         </Card>
       </div>

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useAudit } from "@/components/AuditContext";
 
 const initialArticles = [
   {
@@ -131,6 +132,7 @@ export default function Wiki() {
   const [editContent, setEditContent] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
+  const { addLog } = useAudit();
 
   const selected = articles.find((a) => a.id === selectedId);
   const filtered = articles.filter(
@@ -165,19 +167,23 @@ export default function Wiki() {
       const newArticle = { id: Date.now(), title: editTitle, category: editCategory || "Geral", content: editContent };
       setArticles(prev => [...prev, newArticle]);
       setSelectedId(newArticle.id);
+      addLog({ user: "Admin", action: "Artigo Criado", details: `Novo artigo '${editTitle}' adicionado à Wiki.`, module: "Wiki" });
       toast({ title: "Artigo criado!", description: `"${editTitle}" foi adicionado à Wiki.` });
     } else {
       setArticles(prev => prev.map(a => a.id === selectedId ? { ...a, title: editTitle, category: editCategory, content: editContent } : a));
+      addLog({ user: "Admin", action: "Artigo Editado", details: `Artigo '${editTitle}' atualizado.`, module: "Wiki" });
       toast({ title: "Artigo salvo!", description: `"${editTitle}" foi atualizado.` });
     }
     setIsEditing(false);
   };
 
   const handleDelete = (id: number) => {
+    const art = articles.find(a => a.id === id);
     if (!confirm("Tem certeza que deseja excluir este artigo?")) return;
     const remaining = articles.filter(a => a.id !== id);
     setArticles(remaining);
     if (selectedId === id) setSelectedId(remaining[0]?.id ?? null);
+    addLog({ user: "Admin", action: "Artigo Excluído", details: `Artigo '${art?.title}' removido da Wiki.`, module: "Wiki" });
     toast({ title: "Artigo excluído." });
   };
 
@@ -226,8 +232,8 @@ export default function Wiki() {
                   key={article.id}
                   onClick={() => { setSelectedId(article.id); setIsEditing(false); }}
                   className={`w-full text-left rounded-lg px-3 py-2.5 text-sm transition-colors flex items-center gap-2 ${selectedId === article.id && !isCreating
-                      ? "bg-accent text-accent-foreground font-medium"
-                      : "hover:bg-muted text-muted-foreground"
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "hover:bg-muted text-muted-foreground"
                     }`}
                 >
                   <FileText className="h-4 w-4 shrink-0" />
@@ -276,26 +282,28 @@ export default function Wiki() {
                 </div>
               </div>
             ) : selected ? (
-              <>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-                    <BookOpen className="h-3 w-3 inline mr-1" />{selected.category}
+              <div key={selected.id} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-primary font-bold uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded">
+                    {selected.category}
                   </span>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => handleStartEdit(selected)}>
+                  <div className="flex gap-2 text-muted-foreground">
+                    <Button variant="ghost" size="sm" className="h-8 gap-1.5" onClick={() => handleStartEdit(selected)}>
                       <Edit2 className="h-3.5 w-3.5" />
                       Editar
                     </Button>
-                    <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDelete(selected.id)}>
+                    <Button variant="ghost" size="sm" className="h-8 gap-1.5 hover:text-destructive" onClick={() => handleDelete(selected.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                       Apagar
                     </Button>
                   </div>
                 </div>
+                <h1 className="text-2xl font-bold mb-6 tracking-tight">{selected.title}</h1>
+                <Separator className="mb-6" />
                 <div className="prose prose-sm max-w-none">
                   {renderContent(selected.content)}
                 </div>
-              </>
+              </div>
             ) : (
               <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
                 Selecione um artigo na lista ao lado.

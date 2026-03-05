@@ -20,8 +20,12 @@ import {
   Wrench,
   BriefcaseBusiness,
   ShieldAlert,
+  Info,
+  Network,
+  GitGraph,
+  Layers,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -55,6 +59,13 @@ import QRCode from "react-qr-code";
 import { computers, mobiles, peripherals, softwares, emprestimos } from "@/data/mockData";
 
 const setores = ["Todos", "Administrativo", "Financeiro", "Comercial", "RH", "TI"];
+
+const dependencies = [
+  { service: "ERP Gellak (Totvs)", critical: "Alta", deps: ["SRV-ERP-01 (Servidor)", "SW-CORE-01 (Switch)", "Link Vivo (Internet)"], status: "Ativo" },
+  { service: "E-mail Corporativo", critical: "Alta", deps: ["Office 365 (SaaS)", "Link Vivo", "Link Claro (Backup)"], status: "Ativo" },
+  { service: "Arquivos Compartilhados", critical: "Média", deps: ["SRV-FILE-01", "SW-CORE-01"], status: "Ativo" },
+  { service: "VPN Matriz", critical: "Média", deps: ["Firewall Fortinet", "Link Vivo"], status: "Ativo" },
+];
 
 export default function Inventario() {
   const [search, setSearch] = useState("");
@@ -239,6 +250,10 @@ export default function Inventario() {
           <TabsTrigger value="emprestimos" className="gap-2">
             <BriefcaseBusiness className="h-4 w-4" />
             Empréstimos
+          </TabsTrigger>
+          <TabsTrigger value="deps" className="gap-2">
+            <GitGraph className="h-4 w-4" />
+            Dependências
           </TabsTrigger>
         </TabsList>
 
@@ -477,6 +492,40 @@ export default function Inventario() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="deps" className="mt-4">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Layers className="h-4 w-4" /> Mapeamento de Dependências (ITSM)
+              </CardTitle>
+              <CardDescription>Visualize o impacto de falhas em ativos críticos.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {dependencies.map((dep, idx) => (
+                  <div key={idx} className="border rounded-lg p-4 bg-muted/20">
+                    <div className="flex justify-between items-center mb-3">
+                      <h4 className="font-bold text-sm">{dep.service}</h4>
+                      <Badge variant={dep.critical === "Alta" ? "destructive" : "secondary"}>{dep.critical}</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[10px] uppercase text-muted-foreground font-semibold">Depende de:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {dep.deps.map((d, i) => (
+                          <div key={i} className="flex items-center gap-1.5 text-xs bg-background border px-2 py-1 rounded">
+                            <Network className="h-3 w-3 text-primary" />
+                            {d}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

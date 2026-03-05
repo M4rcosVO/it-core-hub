@@ -32,9 +32,11 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { useAudit } from "@/components/AuditContext";
 
 // Mock data
-const contratosData = [
+const contratosDataRaw = [
     {
         id: 1,
         fornecedor: "Vivo Empresas",
@@ -107,12 +109,50 @@ const contratosData = [
     },
 ];
 
+const initialContratosData = contratosDataRaw;
+
 const tiposContrato = ["Todos", "Conectividade", "Equipamentos", "Software/Cloud", "Serviços"];
 
 export default function Contratos() {
+    const [contratosData, setContratosData] = useState(initialContratosData);
     const [search, setSearch] = useState("");
     const [tipoFilter, setTipoFilter] = useState("Todos");
-    const [selectedContrato, setSelectedContrato] = useState<Record<string, unknown> | null>(null);
+    const [selectedContrato, setSelectedContrato] = useState<typeof initialContratosData[0] | null>(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    // form
+    const [newFornecedor, setNewFornecedor] = useState("");
+    const [newServico, setNewServico] = useState("");
+    const [newVencimento, setNewVencimento] = useState("");
+    const [newValor, setNewValor] = useState("");
+    const [newTipo, setNewTipo] = useState("");
+    const [newSla, setNewSla] = useState("");
+    const [newObs, setNewObs] = useState("");
+    const { toast } = useToast();
+    const { addLog } = useAudit();
+
+    const handleSaveContrato = () => {
+        if (!newFornecedor.trim() || !newServico.trim()) {
+            toast({ title: "Campos obrigatórios", description: "Preencha Fornecedor e Serviço.", variant: "destructive" });
+            return;
+        }
+        const entry = {
+            id: Date.now(),
+            fornecedor: newFornecedor,
+            servico: newServico,
+            tipo: newTipo || "Serviços",
+            vencimento: newVencimento || "—",
+            valorMensal: newValor || "—",
+            status: "Ativo",
+            contatoNome: "—", contatoTelefone: "—", contatoEmail: "—",
+            sla: newSla || "—",
+            observacoes: newObs,
+        };
+        setContratosData(prev => [...prev, entry]);
+        addLog({ user: "Admin", action: "Novo Contrato", details: `Contrato com ${newFornecedor} (${newServico}) cadastrado.`, module: "Contratos" });
+        setNewFornecedor(""); setNewServico(""); setNewVencimento(""); setNewValor(""); setNewTipo(""); setNewSla(""); setNewObs("");
+        setDialogOpen(false);
+        toast({ title: "Contrato salvo!", description: `'${entry.fornecedor}' adicionado com sucesso.` });
+    };
 
     const filteredContratos = contratosData.filter((c) => {
         const matchSearch =
@@ -144,54 +184,61 @@ export default function Contratos() {
                         Gestão de provedores, links de internet, SLAs e garantias
                     </p>
                 </div>
-                <Dialog>
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                     <DialogTrigger asChild>
                         <Button className="gap-2">
                             <Plus className="h-4 w-4" />
                             Novo Contrato
                         </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-lg">
                         <DialogHeader>
                             <DialogTitle>Adicionar Novo Contrato</DialogTitle>
-                            <DialogDescription>
-                                Cadastre um novo contrato de fornecedor de TI.
-                            </DialogDescription>
+                            <DialogDescription>Cadastre um novo contrato de fornecedor de TI.</DialogDescription>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Fornecedor</label>
-                                <Input placeholder="Ex: Vivo Empresas" />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Serviço</label>
-                                <Input placeholder="Ex: Link Dedicado" />
-                            </div>
                             <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2 col-span-2">
+                                    <label className="text-sm font-medium">Fornecedor *</label>
+                                    <Input placeholder="Ex: Vivo Empresas" value={newFornecedor} onChange={(e) => setNewFornecedor(e.target.value)} />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <label className="text-sm font-medium">Serviço *</label>
+                                    <Input placeholder="Ex: Link Dedicado 1Gbps" value={newServico} onChange={(e) => setNewServico(e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Tipo</label>
+                                    <Select value={newTipo} onValueChange={setNewTipo}>
+                                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Conectividade">Conectividade</SelectItem>
+                                            <SelectItem value="Equipamentos">Equipamentos</SelectItem>
+                                            <SelectItem value="Software/Cloud">Software/Cloud</SelectItem>
+                                            <SelectItem value="Serviços">Serviços</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">Vencimento</label>
-                                    <Input type="date" />
+                                    <Input type="date" value={newVencimento} onChange={(e) => setNewVencimento(e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">Valor Mensal</label>
-                                    <Input placeholder="R$ 0,00" />
+                                    <Input placeholder="R$ 0,00" value={newValor} onChange={(e) => setNewValor(e.target.value)} />
                                 </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">Tipo</label>
-                                <Select>
-                                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Conectividade">Conectividade</SelectItem>
-                                        <SelectItem value="Equipamentos">Equipamentos</SelectItem>
-                                        <SelectItem value="Software/Cloud">Software/Cloud</SelectItem>
-                                        <SelectItem value="Serviços">Serviços</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">SLA</label>
+                                    <Input placeholder="Ex: 99.9% uptime" value={newSla} onChange={(e) => setNewSla(e.target.value)} />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <label className="text-sm font-medium">Observações</label>
+                                    <Input placeholder="Notas adicionais..." value={newObs} onChange={(e) => setNewObs(e.target.value)} />
+                                </div>
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="button">Salvar Contrato</Button>
+                            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+                            <Button type="button" onClick={handleSaveContrato}>Salvar Contrato</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>

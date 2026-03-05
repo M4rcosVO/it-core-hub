@@ -1,12 +1,13 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet } from "react-router-dom";
-import { Bell, AlertTriangle, CheckCircle2, FileWarning, Search, Eye, EyeOff } from "lucide-react";
+import { Bell, AlertTriangle, CheckCircle2, FileWarning, Search, Eye, EyeOff, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState, useMemo } from "react";
 
 // Import real data for global notifications
 import { softwares, emprestimos, contratosData } from "@/data/mockData";
@@ -15,30 +16,40 @@ import { usePrivacy } from "@/components/PrivacyContext";
 
 export function AppLayout() {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacy();
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
   // --- DYNAMIC ALERTS LOGIC (Same as Dashboard) ---
-  const alerts = [];
+  const allAlerts = useMemo(() => {
+    const list: { id: string; message: string; type: string; date: string }[] = [];
 
-  contratosData.forEach(c => {
-    if (c.status === "Crítico" || c.status === "Atenção") {
-      alerts.push({ id: `crt-${c.id}`, message: `Contrato ${c.fornecedor} vence em ${c.vencimento}`, type: c.status === "Crítico" ? "warning" : "info", date: "Contratos" });
-    }
-  });
+    contratosData.forEach(c => {
+      if (c.status === "Crítico" || c.status === "Atenção") {
+        list.push({ id: `crt-${c.id}`, message: `Contrato ${c.fornecedor} vence em ${c.vencimento}`, type: c.status === "Crítico" ? "warning" : "info", date: "Contratos" });
+      }
+    });
 
-  softwares.forEach(s => {
-    const uso = s.assigned / s.qtd;
-    if (uso >= 0.9) {
-      alerts.push({ id: `sw-${s.id}`, message: `Uso da licença ${s.nome} atingiu ${Math.round(uso * 100)}%`, type: uso >= 1 ? "warning" : "info", date: "Softwares" });
-    }
-  });
+    softwares.forEach(s => {
+      const uso = s.assigned / s.qtd;
+      if (uso >= 0.9) {
+        list.push({ id: `sw-${s.id}`, message: `Uso da licença ${s.nome} atingiu ${Math.round(uso * 100)}%`, type: uso >= 1 ? "warning" : "info", date: "Softwares" });
+      }
+    });
 
-  emprestimos.forEach(e => {
-    if (e.status === "Atrasado") {
-      alerts.push({ id: `emp-${e.id}`, message: `Empréstimo de ${e.equipamento} p/ ${e.solicitante} está Atrasado!`, type: "warning", date: "Inventário" });
-    }
-  });
+    emprestimos.forEach(e => {
+      if (e.status === "Atrasado") {
+        list.push({ id: `emp-${e.id}`, message: `Empréstimo de ${e.equipamento} p/ ${e.solicitante} está Atrasado!`, type: "warning", date: "Inventário" });
+      }
+    });
 
-  alerts.sort((a, b) => (a.type === "warning" ? -1 : 1));
+    list.sort((a, b) => (a.type === "warning" ? -1 : 1));
+    return list;
+  }, []);
+
+  const alerts = allAlerts.filter(a => !dismissedIds.has(a.id));
   const unreadCount = alerts.length;
+
+  const dismissAlert = (id: string) => setDismissedIds(prev => new Set([...prev, id]));
+  const dismissAll = () => setDismissedIds(new Set(allAlerts.map(a => a.id)));
 
   return (
     <SidebarProvider>
@@ -108,7 +119,7 @@ export function AppLayout() {
                         {alerts.map((alert, i) => (
                           <div
                             key={`${alert.id}-${i}`}
-                            className="flex items-start gap-3 p-4 border-b last:border-0 hover:bg-muted/50 transition-colors cursor-pointer"
+                            className="flex items-start gap-3 p-4 border-b last:border-0 hover:bg-muted/50 transition-colors"
                           >
                             {alert.type === "warning" && <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />}
                             {alert.type === "success" && <CheckCircle2 className="h-4 w-4 text-success mt-0.5 shrink-0" />}
@@ -117,17 +128,26 @@ export function AppLayout() {
                               <p className="text-sm font-medium leading-snug">{alert.message}</p>
                               <p className="text-xs text-muted-foreground mt-1">{alert.date}</p>
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+                              onClick={() => dismissAlert(alert.id)}
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         ))}
                       </div>
                     ) : (
                       <div className="p-8 text-center text-sm text-muted-foreground">
-                        Nenhuma notificação no momento.
+                        <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-success/50" />
+                        Nenhuma notificação pendente.
                       </div>
                     )}
                   </ScrollArea>
                   <div className="p-2 border-t text-center">
-                    <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground">
+                    <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground" onClick={dismissAll}>
                       Marcar todas como lidas
                     </Button>
                   </div>
