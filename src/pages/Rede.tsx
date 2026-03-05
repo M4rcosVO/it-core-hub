@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Shield,
   Globe,
@@ -9,6 +9,7 @@ import {
   Network as NetworkIcon,
   Server,
   Activity,
+  GitGraph,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  ChevronRight,
+  Cpu,
+  Smartphone as Phone,
+  Printer as Print,
+  ArrowRight,
+  Monitor
+} from "lucide-react";
 import { usePrivacy } from "@/components/PrivacyContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAudit } from "@/components/AuditContext";
@@ -88,6 +97,23 @@ const switchList = [
     ],
   },
 ];
+
+function TopologyNode({ icon, label, type }: { icon: React.ReactNode, label: string, type: string }) {
+  return (
+    <div className="flex flex-col items-center space-y-2 group cursor-pointer">
+      <div className="relative">
+        <div className="p-2.5 bg-slate-950 border border-slate-800 rounded-md group-hover:bg-slate-900 transition-all">
+          {React.cloneElement(icon as React.ReactElement, { className: "h-4 w-4 text-slate-500 group-hover:text-slate-300" })}
+        </div>
+        <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-success opacity-50" />
+      </div>
+      <div className="text-center">
+        <p className="text-[9px] font-medium leading-none">{label}</p>
+        <p className="text-[8px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">{type}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function Rede() {
   const [vpnUsers, setVpnUsers] = useState(initialVpnUsers);
@@ -174,6 +200,10 @@ export default function Rede() {
           <TabsTrigger value="switches" className="gap-2">
             <Server className="h-4 w-4" />
             Mapeamento de Switches
+          </TabsTrigger>
+          <TabsTrigger value="topologia" className="gap-2">
+            <GitGraph className="h-4 w-4" />
+            Topologia Visual
           </TabsTrigger>
         </TabsList>
 
@@ -536,6 +566,95 @@ export default function Rede() {
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        <TabsContent value="topologia" className="mt-4">
+          <Card className="shadow-sm overflow-hidden bg-slate-950 border-slate-800">
+            <CardHeader className="border-b border-white/5">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" /> Visualização de Infraestrutura (L2/L3)
+              </CardTitle>
+              <CardDescription>Mapeamento lógico de interconexões entre ativos críticos e terminais.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-8">
+              <div className="relative min-h-[500px] flex flex-col items-center justify-center space-y-12">
+
+                {/* Core Layer */}
+                <div className="flex flex-col items-center space-y-2 group cursor-pointer relative z-10">
+                  <div className="p-4 bg-primary/20 border-2 border-primary rounded-xl shadow-[0_0_20px_rgba(59,130,246,0.3)] group-hover:scale-110 transition-transform">
+                    <Shield className="h-8 w-8 text-primary" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold uppercase tracking-widest text-primary">Gateway / FW</p>
+                    <p className="text-[10px] font-mono text-muted-foreground/60 tracking-tighter">Fortinet 100F</p>
+                  </div>
+                </div>
+
+                {/* Vertical Connector */}
+                <div className="h-10 w-0.5 bg-gradient-to-b from-primary via-primary/50 to-muted-foreground/30" />
+
+                {/* Switch Layer */}
+                <div className="flex flex-col md:flex-row gap-20 items-center justify-center relative">
+
+                  {/* Switch 1 */}
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="flex flex-col items-center space-y-2 group cursor-pointer px-4 py-2 border border-white/5 rounded-lg bg-black/40 hover:border-primary/50 transition-colors">
+                      <Server className="h-6 w-6 text-slate-400 group-hover:text-primary transition-colors" />
+                      <div className="text-center">
+                        <p className="text-[11px] font-bold">SW-CORE-01</p>
+                        <Badge variant="outline" className="text-[9px] h-4 bg-slate-900/50">Cisco 9300</Badge>
+                      </div>
+                    </div>
+
+                    {/* Connections Down */}
+                    <div className="flex gap-8 mt-4">
+                      <TopologyNode icon={<Cpu />} label="SRV-ERP-01" type="Server" />
+                      <TopologyNode icon={<Monitor />} label="WKS-ADM-001" type="Client" />
+                      <TopologyNode icon={<Print />} label="PRT-HP-ADM" type="Printer" />
+                    </div>
+                  </div>
+
+                  {/* Switch 2 (Cascata) */}
+                  <div className="relative flex flex-col items-center space-y-4">
+                    {/* Connection lines to the left (Cascata) */}
+                    <div className="absolute -left-12 top-1/4 w-12 h-px bg-gradient-to-r from-slate-700 to-transparent hidden md:block" />
+
+                    <div className="flex flex-col items-center space-y-2 group cursor-pointer px-4 py-2 border border-white/5 rounded-lg bg-black/40 hover:border-primary/50 transition-colors">
+                      <Server className="h-6 w-6 text-slate-400 group-hover:text-primary transition-colors" />
+                      <div className="text-center">
+                        <p className="text-[11px] font-bold">SW-ACCESS-01</p>
+                        <Badge variant="outline" className="text-[9px] h-4 bg-slate-900/50">Aruba 2930F</Badge>
+                      </div>
+                    </div>
+
+                    {/* Connections Down */}
+                    <div className="flex gap-8 mt-4">
+                      <TopologyNode icon={<Phone />} label="AP-WIFI-01" type="Infra" />
+                      <TopologyNode icon={<Monitor />} label="WKS-FIN-012" type="Client" />
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Legend */}
+                <div className="absolute bottom-4 right-4 p-4 bg-black/40 rounded-xl border border-white/5 backdrop-blur-md hidden md:block">
+                  <h5 className="text-[10px] font-bold uppercase mb-2 text-muted-foreground tracking-widest">Legenda</h5>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                      <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_5px_rgba(59,130,246,1)]" /> Camada Core
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                      <div className="w-2 h-2 rounded-full bg-slate-600" /> Acesso / Periférico
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                      <div className="h-0.5 w-3 bg-slate-700" /> Link Físico
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
       </Tabs>

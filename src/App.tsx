@@ -15,6 +15,7 @@ import Configuracoes from "@/pages/Configuracoes";
 import Acessos from "@/pages/Acessos";
 import Contratos from "@/pages/Contratos";
 import Rotinas from "@/pages/Rotinas";
+import Calendario from "@/pages/Calendario";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
                   <Route path="/contratos" element={<Contratos />} />
                   <Route path="/wiki" element={<Wiki />} />
                   <Route path="/rotinas" element={<Rotinas />} />
+                  <Route path="/calendario" element={<Calendario />} />
                   <Route path="/configuracoes" element={<Configuracoes />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />

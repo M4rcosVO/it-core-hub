@@ -12,6 +12,8 @@ import {
   Lock,
   ChevronRight,
   ShieldCheck,
+  FileDown,
+  Filter,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -65,14 +67,23 @@ const auditLogs = [
 
 export default function Configuracoes() {
   const [searchLog, setSearchLog] = useState("");
+  const [moduleFilter, setModuleFilter] = useState("Todos");
   const { theme, toggleTheme } = useTheme();
 
-  const filteredLogs = auditLogs.filter(
-    (log) =>
-      searchLog === "" ||
+  const filteredLogs = auditLogs.filter((log) => {
+    const matchesSearch = searchLog === "" ||
       log.usuario.toLowerCase().includes(searchLog.toLowerCase()) ||
-      log.acao.toLowerCase().includes(searchLog.toLowerCase())
-  );
+      log.acao.toLowerCase().includes(searchLog.toLowerCase());
+
+    // Simulating module detection from action text for demo
+    const matchesModule = moduleFilter === "Todos" ||
+      (moduleFilter === "Inventário" && log.acao.includes("Notebook")) ||
+      (moduleFilter === "Rede" && log.acao.includes("IP")) ||
+      (moduleFilter === "Acessos" && log.acao.includes("VPN")) ||
+      (moduleFilter === "Wiki" && log.acao.includes("Wiki"));
+
+    return matchesSearch && matchesModule;
+  });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -202,12 +213,35 @@ export default function Configuracoes() {
         </TabsContent>
 
         <TabsContent value="auditoria" className="mt-4 space-y-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar por usuário ou ação..." value={searchLog} onChange={(e) => setSearchLog(e.target.value)} className="pl-9" />
+          <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+            <div className="flex flex-1 gap-2 w-full max-w-2xl">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Buscar por usuário ou ação..." value={searchLog} onChange={(e) => setSearchLog(e.target.value)} className="pl-9" />
+              </div>
+              <select
+                className="bg-background border rounded-md px-3 text-xs font-medium focus:ring-1 ring-primary outline-none h-10 min-w-32"
+                value={moduleFilter}
+                onChange={(e) => setModuleFilter(e.target.value)}
+              >
+                <option>Todos</option>
+                <option>Inventário</option>
+                <option>Rede</option>
+                <option>Acessos</option>
+                <option>Wiki</option>
+              </select>
+            </div>
+            <Button variant="outline" size="sm" className="gap-2 h-10">
+              <FileDown className="h-4 w-4" /> Exportar PDF
+            </Button>
           </div>
 
-          <Card className="shadow-sm">
+          <Card className="shadow-sm border-none bg-background/50 backdrop-blur-sm">
+            <CardHeader className="pb-2 border-b">
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5" /> Resultados Filtrados: {filteredLogs.length}
+              </CardTitle>
+            </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
