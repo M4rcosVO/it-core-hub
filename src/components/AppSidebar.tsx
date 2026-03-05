@@ -9,6 +9,10 @@ import {
   FileSignature,
   CheckSquare,
   CalendarDays,
+  Shield,
+  ChevronDown,
+  User,
+  LogOut
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -24,6 +28,15 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useAuth, Role } from "@/components/AuthContext";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -40,33 +53,63 @@ const menuItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
+  const { userRole, setUserRole, hasPermission } = useAuth();
+
+  const filteredItems = menuItems.filter(item => hasPermission(item.title));
+
+  const roles: Role[] = ["Administrador", "Técnico N1", "Auditor"];
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary">
-            <Server className="h-5 w-5 text-sidebar-primary-foreground" />
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-sidebar-primary-foreground tracking-wide">
-                GELLAK
-              </span>
-              <span className="text-[11px] text-sidebar-foreground/60 font-medium">
-                IT Core
-              </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary ring-2 ring-primary/20">
+                <Shield className="h-5 w-5 text-sidebar-primary-foreground" />
+              </div>
+              {!collapsed && (
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-sm font-bold text-sidebar-primary-foreground tracking-wide truncate">
+                    GELLAK IT
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-primary font-bold uppercase truncate">
+                      {userRole}
+                    </span>
+                    <ChevronDown className="h-2.5 w-2.5 text-muted-foreground" />
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuLabel>Alternar Perfil (Modo Teste)</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {roles.map((role) => (
+              <DropdownMenuItem
+                key={role}
+                onClick={() => setUserRole(role)}
+                className={userRole === role ? "bg-accent font-semibold" : ""}
+              >
+                <User className="mr-2 h-4 w-4" />
+                {role}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-destructive focus:text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair do Sistema
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarHeader>
 
       <SidebarContent className="px-2">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {filteredItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
                     <NavLink
@@ -89,7 +132,7 @@ export function AppSidebar() {
       <SidebarFooter className="p-4">
         {!collapsed && (
           <p className="text-[11px] text-sidebar-foreground/40">
-            v1.0.0 · Interno
+            v1.0.0 · Módulo RBAC Ativo
           </p>
         )}
       </SidebarFooter>

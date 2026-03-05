@@ -13,6 +13,7 @@ import {
   Mail,
   Download,
   Dices,
+  Lock,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,8 +37,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { usePrivacy } from "@/components/PrivacyContext";
+import { useAuth } from "@/components/AuthContext";
 
-// Mock data starting set (now managed as state inside the component)
 const initialAcessos = [
   { id: 1, nome: "FortiGate VPN", url: "vpn.gellak.com.br", usuario: "admin.ti", senha: "SuperSecretPassword123!", categoria: "VPN", setor: "TI", icon: Shield },
   { id: 2, nome: "Totvs Protheus", url: "192.168.1.10:8080", usuario: "admin_erp", senha: "ErpPassword2024", categoria: "ERP", setor: "Geral", icon: Database },
@@ -49,6 +50,9 @@ const initialAcessos = [
 const categorias = ["Todas", "VPN", "ERP", "Web", "E-mail", "Banco de Dados", "Outros"];
 
 export default function Acessos() {
+  const { userRole } = useAuth();
+  const isAdmin = userRole === "Administrador";
+
   const [acessosData, setAcessosData] = useState(initialAcessos);
   const [search, setSearch] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("Todas");
@@ -65,6 +69,30 @@ export default function Acessos() {
 
   const { toast } = useToast();
   const { isPrivacyMode } = usePrivacy();
+
+  if (!isAdmin) {
+    return (
+      <div className="h-[80vh] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full shadow-lg border-destructive/20 bg-destructive/5 animate-in fade-in zoom-in duration-300">
+          <CardContent className="pt-8 pb-8 flex flex-col items-center text-center space-y-4">
+            <div className="p-4 bg-destructive/10 rounded-full ring-4 ring-destructive/5">
+              <Lock className="h-10 w-10 text-destructive" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold tracking-tight">Acesso Restrito</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Você está logado como <span className="font-bold text-foreground">{userRole}</span>.
+                Somente o perfil <span className="font-bold text-primary">Administrador</span> tem permissão para visualizar ou gerenciar credenciais no cofre.
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => window.history.back()}>
+              Voltar para Segurança
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const filteredAcessos = acessosData.filter((a) => {
     const matchSearch = search === "" || Object.values(a).some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
@@ -109,7 +137,6 @@ export default function Acessos() {
       icon: iconMap[newCategoria] ?? Key,
     };
     setAcessosData((prev) => [...prev, newEntry]);
-    // Reset form
     setNewNome(""); setNewUrl(""); setNewUsuario(""); setNewPassword(""); setNewCategoria(""); setNewSetor("");
     setDialogOpen(false);
     toast({ title: "Credencial salva!", description: `'${newEntry.nome}' adicionada ao cofre.` });
@@ -130,7 +157,6 @@ export default function Acessos() {
     document.body.removeChild(link);
     toast({ title: "Exportação Concluída", description: "O arquivo CSV dos acessos foi baixado com sucesso." });
   };
-
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -184,12 +210,9 @@ export default function Acessos() {
                   <Select value={newCategoria} onValueChange={setNewCategoria}>
                     <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="VPN">VPN</SelectItem>
-                      <SelectItem value="ERP">ERP</SelectItem>
-                      <SelectItem value="Web">Web</SelectItem>
-                      <SelectItem value="E-mail">E-mail</SelectItem>
-                      <SelectItem value="Banco de Dados">Banco de Dados</SelectItem>
-                      <SelectItem value="Outros">Outros</SelectItem>
+                      {categorias.filter(c => c !== "Todas").map(cat => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -207,7 +230,6 @@ export default function Acessos() {
         </Dialog>
       </div>
 
-      {/* Filters & Export */}
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
