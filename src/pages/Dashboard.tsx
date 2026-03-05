@@ -16,10 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-import { computers, mobiles, softwares, emprestimos } from "./Inventario";
-import { contratosData } from "./Contratos";
-import { acessosData } from "./Acessos";
-import { ipList } from "./Rede";
+import { computers, mobiles, softwares, emprestimos, contratosData, acessosData, ipList } from "@/data/mockData";
 
 export default function Dashboard() {
   // --- DYNAMIC KPIs CALCULATION ---

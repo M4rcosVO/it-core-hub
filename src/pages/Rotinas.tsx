@@ -36,7 +36,7 @@ type Routine = {
     titulo: string;
     descricao: string;
     categoria: "Entrada" | "Saída" | "Operacional" | "Acessos" | "Manutenção" | "Auditoria" | "Projetos";
-    icone: any;
+    icone: React.ElementType;
     tasks: CheckTask[];
 };
 
@@ -297,7 +297,7 @@ export default function Rotinas() {
                                     <select
                                         className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                         value={editForm.categoria}
-                                        onChange={(e) => setEditForm({ ...editForm, categoria: e.target.value as any })}
+                                        onChange={(e) => setEditForm({ ...editForm, categoria: e.target.value as Routine["categoria"] })}
                                     >
                                         <option value="Entrada">Entrada (Onboarding)</option>
                                         <option value="Saída">Saída (Offboarding)</option>

@@ -24,11 +24,7 @@ import {
     CommandShortcut,
 } from "@/components/ui/command";
 import { useNavigate } from "react-router-dom";
-
-// Mock imports para termos dados para buscar
-import { computers, mobiles, softwares } from "@/pages/Inventario";
-import { acessosData } from "@/pages/Acessos";
-import { ipList } from "@/pages/Rede";
+import { computers, mobiles, acessosData, ipList } from "@/data/mockData";
 
 export function GlobalSearch() {
     const [open, setOpen] = React.useState(false);
@@ -105,7 +101,7 @@ export function GlobalSearch() {
                     {acessosData.slice(0, 3).map(acesso => (
                         <CommandItem key={`acc-${acesso.id}`} onSelect={() => runCommand(() => navigate("/acessos"))}>
                             <Key className="mr-2 h-4 w-4 text-muted-foreground" />
-                            <span>{acesso.sistema}</span>
+                            <span>{acesso.nome}</span>
                             <span className="ml-2 text-xs text-muted-foreground">- {acesso.usuario}</span>
                         </CommandItem>
                     ))}
@@ -115,7 +111,7 @@ export function GlobalSearch() {
 
                 <CommandGroup heading="Rede">
                     {ipList.slice(0, 3).map(ip => (
-                        <CommandItem key={`ip-${ip.id}`} onSelect={() => runCommand(() => navigate("/rede"))}>
+                        <CommandItem key={`ip-${ip.ip}`} onSelect={() => runCommand(() => navigate("/rede"))}>
                             <Network className="mr-2 h-4 w-4 text-muted-foreground" />
                             <span>{ip.ip}</span>
                             <span className="ml-2 text-xs text-muted-foreground">- {ip.dispositivo}</span>

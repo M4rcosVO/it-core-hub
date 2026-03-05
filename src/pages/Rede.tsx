@@ -81,8 +81,6 @@ const switchList = [
   },
 ];
 
-export { vpnUsers, ipList, vlansList, switchList };
-
 export default function Rede() {
   const [searchVpn, setSearchVpn] = useState("");
   const [searchIp, setSearchIp] = useState("");

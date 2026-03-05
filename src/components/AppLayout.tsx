@@ -9,8 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Import real data for global notifications
-import { softwares, emprestimos } from "@/pages/Inventario";
-import { contratosData } from "@/pages/Contratos";
+import { softwares, emprestimos, contratosData } from "@/data/mockData";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { usePrivacy } from "@/components/PrivacyContext";
 
