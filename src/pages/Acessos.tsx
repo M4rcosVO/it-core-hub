@@ -11,6 +11,8 @@ import {
   Globe,
   Database,
   Mail,
+  Download,
+  Dices,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,6 +35,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { usePrivacy } from "@/components/PrivacyContext";
 
 // Mock data
 const acessosData = [
@@ -51,7 +54,12 @@ export default function Acessos() {
   const [search, setSearch] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("Todas");
   const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
+
+  // States para o modal de nova credencial
+  const [newPassword, setNewPassword] = useState("");
+
   const { toast } = useToast();
+  const { isPrivacyMode } = usePrivacy();
 
   const filteredAcessos = acessosData.filter((a) => {
     const matchSearch = search === "" || Object.values(a).some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
@@ -66,6 +74,51 @@ export default function Acessos() {
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: "Copiado!", description: `${type} copiada para a área de transferência.` });
+  };
+
+  const generateStrongPassword = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+";
+    let password = "";
+    for (let i = 0; i < 16; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewPassword(password);
+    navigator.clipboard.writeText(password);
+    toast({
+      title: "Senha Gerada!",
+      description: "Uma senha forte de 16 caracteres foi gerada e copiada para a área de transferência."
+    });
+  };
+
+  const handleExportCSV = () => {
+    if (filteredAcessos.length === 0) return;
+
+    // Converte para CSV omitindo o icone (objeto indisponível para texto simples)
+    const headers = ["ID", "Sistema/Nome", "URL", "Usuário", "Senha", "Categoria", "Setor"].join(",");
+    const rows = filteredAcessos.map(a =>
+      [
+        a.id,
+        `"${a.nome}"`,
+        `"${a.url}"`,
+        `"${a.usuario}"`,
+        `"${a.senha}"`,
+        `"${a.categoria}"`,
+        `"${a.setor}"`
+      ].join(",")
+    ).join("\n");
+
+    const csvContent = "data:text/csv;charset=utf-8,%EF%BB%BF" + encodeURIComponent(headers + "\n" + rows);
+    const link = document.createElement("a");
+    link.setAttribute("href", csvContent);
+    link.setAttribute("download", `IT_Acessos_Cofre_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Exportação Concluída",
+      description: "O arquivo CSV dos acessos foi baixado com sucesso.",
+    });
   };
 
   return (
@@ -104,8 +157,25 @@ export default function Acessos() {
                   <Input placeholder="Ex: admin" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Senha</label>
-                  <Input type="password" placeholder="••••••••" />
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Senha</label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs gap-1.5 text-muted-foreground hover:text-primary"
+                      onClick={generateStrongPassword}
+                    >
+                      <Dices className="h-3 w-3" />
+                      Gerar Forte
+                    </Button>
+                  </div>
+                  <Input
+                    type="text"
+                    placeholder="••••••••"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -136,15 +206,15 @@ export default function Acessos() {
         </Dialog>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      {/* Filters & Export */}
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nome, usuário, URL..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 w-full"
           />
         </div>
         <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
@@ -157,6 +227,10 @@ export default function Acessos() {
             ))}
           </SelectContent>
         </Select>
+        <Button variant="outline" className="w-full sm:w-auto gap-2" onClick={handleExportCSV}>
+          <Download className="h-4 w-4" />
+          Exportar CSV
+        </Button>
       </div>
 
       <Card className="shadow-sm">
@@ -203,7 +277,9 @@ export default function Acessos() {
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-medium">{a.usuario}</span>
+                        <span className="font-mono text-xs font-medium">
+                          {isPrivacyMode ? "••••••" : a.usuario}
+                        </span>
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(a.usuario, "Usuário")}>
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -212,10 +288,10 @@ export default function Acessos() {
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         <div className="bg-muted px-2 py-1 rounded font-mono text-xs min-w-[120px] tracking-widest text-center">
-                          {visiblePasswords[a.id] ? a.senha : "••••••••"}
+                          {isPrivacyMode ? "••••••••" : (visiblePasswords[a.id] ? a.senha : "••••••••")}
                         </div>
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => togglePasswordVisibility(a.id)}>
-                          {visiblePasswords[a.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                          {isPrivacyMode || !visiblePasswords[a.id] ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                         </Button>
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(a.senha, "Senha")}>
                           <Copy className="h-3.5 w-3.5" />

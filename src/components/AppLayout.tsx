@@ -1,8 +1,9 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Outlet } from "react-router-dom";
-import { Bell, AlertTriangle, CheckCircle2, FileWarning, Monitor } from "lucide-react";
+import { Bell, AlertTriangle, CheckCircle2, FileWarning, Search, Eye, EyeOff } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,8 +11,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 // Import real data for global notifications
 import { softwares, emprestimos } from "@/pages/Inventario";
 import { contratosData } from "@/pages/Contratos";
+import { GlobalSearch } from "@/components/GlobalSearch";
+import { usePrivacy } from "@/components/PrivacyContext";
 
 export function AppLayout() {
+  const { isPrivacyMode, togglePrivacyMode } = usePrivacy();
   // --- DYNAMIC ALERTS LOGIC (Same as Dashboard) ---
   const alerts = [];
 
@@ -43,10 +47,41 @@ export function AppLayout() {
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center justify-between border-b px-4 bg-card shrink-0">
-            <SidebarTrigger className="mr-4" />
+            <div className="flex items-center gap-4">
+              <SidebarTrigger />
+
+              {/* Fake Search Input Trigger */}
+              <div
+                className="hidden md:flex items-center gap-2 bg-muted/50 hover:bg-muted/80 transition-colors px-3 py-1.5 rounded-md border text-sm text-muted-foreground w-64 cursor-text"
+                onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'k', 'metaKey': true }))}
+              >
+                <Search className="h-4 w-4 shrink-0" />
+                <span className="flex-1 truncate text-left">Buscar ou pular para...</span>
+                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-background px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100 shadow-sm">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </div>
+            </div>
 
             {/* Global Actions (Right side) */}
             <div className="flex items-center gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9" onClick={togglePrivacyMode}>
+                      {isPrivacyMode ? (
+                        <EyeOff className="h-5 w-5 text-primary" />
+                      ) : (
+                        <Eye className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{isPrivacyMode ? "Desativar Modo Privacidade" : "Ativar Modo Privacidade (Ofuscar Dados)"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative h-9 w-9">
@@ -103,6 +138,7 @@ export function AppLayout() {
           </main>
         </div>
       </div>
+      <GlobalSearch />
     </SidebarProvider>
   );
 }

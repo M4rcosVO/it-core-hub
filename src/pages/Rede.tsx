@@ -24,6 +24,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { usePrivacy } from "@/components/PrivacyContext";
 
 const vpnUsers = [
   { id: 1, nome: "Carlos Silva", login: "carlos.silva", status: "Ativo", criacao: "15/01/2024" },
@@ -86,6 +87,8 @@ export default function Rede() {
   const [searchVpn, setSearchVpn] = useState("");
   const [searchIp, setSearchIp] = useState("");
   const [searchVlan, setSearchVlan] = useState("");
+
+  const { isPrivacyMode } = usePrivacy();
 
   const filteredVpn = vpnUsers.filter((v) =>
     searchVpn === "" || v.nome.toLowerCase().includes(searchVpn.toLowerCase()) || v.login.toLowerCase().includes(searchVpn.toLowerCase())
@@ -236,7 +239,9 @@ export default function Rede() {
                   <tbody>
                     {filteredIps.map((i, idx) => (
                       <tr key={idx} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="p-3 font-mono text-xs font-medium">{i.ip}</td>
+                        <td className="p-3 font-mono text-xs font-medium">
+                          {isPrivacyMode ? i.ip.replace(/\d+\.\d+$/, "***.***") : i.ip}
+                        </td>
                         <td className="p-3">{i.dispositivo}</td>
                         <td className="p-3">{i.setor}</td>
                       </tr>
@@ -304,8 +309,12 @@ export default function Rede() {
                       <tr key={v.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                         <td className="p-3 text-center font-mono font-medium">{v.id}</td>
                         <td className="p-3 font-medium">{v.nome}</td>
-                        <td className="p-3 font-mono text-xs">{v.faixa}</td>
-                        <td className="p-3 font-mono text-xs hidden sm:table-cell">{v.gateway}</td>
+                        <td className="p-3 font-mono text-xs">
+                          {isPrivacyMode ? v.faixa.replace(/\d+\.\d+\//, "***.***/") : v.faixa}
+                        </td>
+                        <td className="p-3 font-mono text-xs hidden sm:table-cell">
+                          {isPrivacyMode ? v.gateway.replace(/\d+\.\d+$/, "***.***") : v.gateway}
+                        </td>
                         <td className="p-3 text-center">
                           {v.dhcp ? (
                             <Badge variant="outline" className="bg-success/10 text-success border-success/20">Ativo</Badge>
@@ -361,7 +370,9 @@ export default function Rede() {
                       <div>
                         <CardTitle className="text-lg flex items-center gap-2">
                           {sw.hostname}
-                          <Badge variant="outline" className="font-mono text-[10px]">{sw.ip}</Badge>
+                          <Badge variant="outline" className="font-mono text-[10px]">
+                            {isPrivacyMode ? sw.ip.replace(/\d+\.\d+$/, "***.***") : sw.ip}
+                          </Badge>
                         </CardTitle>
                         <CardDescription className="mt-1 flex items-center gap-4">
                           <span>{sw.modelo}</span>

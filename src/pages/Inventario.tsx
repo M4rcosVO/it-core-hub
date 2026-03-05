@@ -128,6 +128,42 @@ export default function Inventario() {
     toast({ title: "QR Code Gerado", description: `QR Code do ativo gerado com sucesso.` });
   };
 
+  const handleExportCSV = () => {
+    let dataToExport: any[] = [];
+    let filename = "";
+
+    // Exportação simples da aba ativa focada nos Computadores por enquanto
+    dataToExport = filteredComputers.map(c => ({
+      ...c,
+      termoAssinado: c.termoAssinado ? "Sim" : "Não"
+    }));
+    filename = "IT_Inventario_Computadores";
+
+    if (dataToExport.length === 0) return;
+
+    // Converte para CSV
+    const headers = Object.keys(dataToExport[0]).filter(k => k !== "historico").join(",");
+    const rows = dataToExport.map(obj =>
+      Object.keys(obj)
+        .filter(k => k !== "historico")
+        .map(k => `"${String(obj[k]).replace(/"/g, '""')}"`)
+        .join(",")
+    ).join("\n");
+
+    const csvContent = "data:text/csv;charset=utf-8,%EF%BB%BF" + encodeURIComponent(headers + "\n" + rows);
+    const link = document.createElement("a");
+    link.setAttribute("href", csvContent);
+    link.setAttribute("download", `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Exportação Concluída",
+      description: "O arquivo CSV foi baixado com sucesso.",
+    });
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -188,15 +224,15 @@ export default function Inventario() {
         </Dialog>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      {/* Filters & Export */}
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por hostname, responsável, serial..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 w-full"
           />
         </div>
         <Select value={setorFilter} onValueChange={setSetorFilter}>
@@ -209,6 +245,10 @@ export default function Inventario() {
             ))}
           </SelectContent>
         </Select>
+        <Button variant="outline" className="w-full sm:w-auto gap-2" onClick={handleExportCSV}>
+          <Download className="h-4 w-4" />
+          Exportar CSV
+        </Button>
       </div>
 
       <Tabs defaultValue="computers">
