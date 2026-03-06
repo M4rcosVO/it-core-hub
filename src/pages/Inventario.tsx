@@ -75,6 +75,7 @@ import { computers, mobiles, peripherals, softwares, emprestimos, setores } from
 import { useAuth } from "@/components/AuthContext";
 import { useAudit } from "@/components/AuditContext";
 import { TableSkeleton } from "@/components/LoadingSkeletons";
+import { useLocation } from "react-router-dom";
 
 
 
@@ -103,6 +104,16 @@ export default function Inventario() {
   const [auditSearchId, setAuditSearchId] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const { search: searchParams } = useLocation();
+  const queryTab = new URLSearchParams(searchParams).get("tab");
+  const [activeTab, setActiveTab] = useState(queryTab || "computers");
+
+  useEffect(() => {
+    if (queryTab) {
+      setActiveTab(queryTab);
+    }
+  }, [queryTab]);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 800);
@@ -462,7 +473,7 @@ export default function Inventario() {
         </DialogContent>
       </Dialog>
 
-      <Tabs defaultValue="computers">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="computers" className="gap-2">
             <Monitor className="h-4 w-4" />
@@ -541,7 +552,188 @@ export default function Inventario() {
             </CardContent>
           </Card>
         </TabsContent>
-        {/* ... Other Tabs contents would follow similar pattern ... */}
+        <TabsContent value="mobiles" className="mt-4">
+          <Card className="shadow-sm">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="w-[40px] p-3 text-center">
+                        <PrintIcon className="h-3 w-3 inline" />
+                      </th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Modelo</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">CPU/RAM</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">IMEI</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Responsável</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredMobiles.map((m) => (
+                      <tr key={m.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => openDetail(m, "mobile")}>
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => togglePrintSelection(m.id)}
+                            className={`p-1 rounded border transition-colors ${selectedForPrint.includes(m.id) ? 'bg-primary border-primary text-primary-foreground' : 'text-muted-foreground border-border hover:border-primary'}`}
+                          >
+                            {selectedForPrint.includes(m.id) ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+                          </button>
+                        </td>
+                        <td className="p-3 font-medium">{m.modelo}</td>
+                        <td className="p-3 hidden md:table-cell">{m.especificacoes}</td>
+                        <td className="p-3 text-xs font-mono">{m.imei}</td>
+                        <td className="p-3">{m.responsavel}</td>
+                        <td className="p-3">
+                          <Badge variant="outline">{m.status}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="peripherals" className="mt-4">
+          <Card className="shadow-sm">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="w-[40px] p-3 text-center">
+                        <PrintIcon className="h-3 w-3 inline" />
+                      </th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Tipo</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Modelo</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Setor</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Patrimônio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPeripherals.map((p) => (
+                      <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => openDetail(p, "peripheral")}>
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => togglePrintSelection(p.id)}
+                            className={`p-1 rounded border transition-colors ${selectedForPrint.includes(p.id) ? 'bg-primary border-primary text-primary-foreground' : 'text-muted-foreground border-border hover:border-primary'}`}
+                          >
+                            {selectedForPrint.includes(p.id) ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+                          </button>
+                        </td>
+                        <td className="p-3">{p.tipo}</td>
+                        <td className="p-3">{p.modelo}</td>
+                        <td className="p-3">{p.setor}</td>
+                        <td className="p-3 font-mono text-xs">{p.patrimonio}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="softwares" className="mt-4">
+          <Card className="shadow-sm">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-3 font-medium text-muted-foreground">Nome</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Licenças</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Vencimento</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSoftwares.map((s) => (
+                      <tr key={s.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => openDetail(s, "software")}>
+                        <td className="p-3 font-medium">{s.nome}</td>
+                        <td className="p-3">{s.utilizadas} / {s.total}</td>
+                        <td className="p-3">{s.vencimento}</td>
+                        <td className="p-3">
+                          <Badge variant={(s.utilizadas / s.total) > 0.9 ? "destructive" : "default"}>
+                            {(s.utilizadas / s.total) >= 1 ? "Esgotado" : (s.utilizadas / s.total) > 0.8 ? "Crítico" : "Ok"}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="emprestimos" className="mt-4">
+          <Card className="shadow-sm">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-3 font-medium text-muted-foreground">Colaborador</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Ativo</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Saída</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Retorno</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {emprestimos.map((e) => (
+                      <tr key={e.id} className="border-b last:border-0 hover:bg-muted/30">
+                        <td className="p-3 font-medium">{e.colaborador}</td>
+                        <td className="p-3">{e.ativo}</td>
+                        <td className="p-3">{e.dataSaida}</td>
+                        <td className="p-3">{e.dataRetorno}</td>
+                        <td className="p-3">
+                          <Badge variant={e.status === "Atrasado" ? "destructive" : "default"}>{e.status}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="deps" className="mt-4">
+          <Card className="shadow-sm">
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <GitGraph className="h-5 w-5 text-primary" />
+                  <h3 className="font-bold">Mapa de Dependências Críticas</h3>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {dependencies.map((d, i) => (
+                    <Card key={i} className="bg-muted/30">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-sm tracking-tight">{d.service}</span>
+                          <Badge variant={d.critical === "Alta" ? "destructive" : "default"} className="text-[10px]">{d.critical}</Badge>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold">Baseado em:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {d.deps.map((dep, j) => (
+                              <Badge key={j} variant="outline" className="text-[9px] py-0">{dep}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       <Sheet open={!!selectedAsset} onOpenChange={() => { setSelectedAsset(null); setAssetType(null); }}>

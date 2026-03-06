@@ -12,8 +12,10 @@ import {
   Shield,
   ChevronDown,
   User,
-  LogOut
+  LogOut,
+  Clock
 } from "lucide-react";
+import { format, parse, differenceInDays } from "date-fns";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -60,9 +62,29 @@ export function AppSidebar() {
 
   const roles: Role[] = ["Administrador", "Técnico N1", "Auditor"];
 
+  const getDaysRemaining = (dateStr: string) => {
+    if (!dateStr || dateStr === "—" || dateStr.includes("Automática") || dateStr === "Pagamento Anual") return null;
+    try {
+      const d = parse(dateStr, "dd/MM/yyyy", new Date());
+      return differenceInDays(d, new Date());
+    } catch (e) {
+      return null;
+    }
+  };
+
   // Logic to determine if there are critical alerts for badges
-  const hasInventoryAlerts = computers.some(c => c.status === "Em Manutenção") || softwares.some(s => s.assigned / s.qtd >= 0.9) || emprestimos.some(e => e.status === "Atrasado");
-  const hasContractAlerts = contratosData.some(c => c.status === "Crítico");
+  const hasInventoryAlerts =
+    computers.some(c => {
+      const days = getDaysRemaining(c.garantiaVencimento);
+      return days !== null && days < 0; // Expired warranty
+    }) ||
+    softwares.some(s => s.assigned / s.qtd >= 1) || // Maxed out
+    emprestimos.some(e => e.status === "Atrasado"); // Late loan
+
+  const hasContractAlerts = contratosData.some(c => {
+    const days = getDaysRemaining(c.vencimento);
+    return (days !== null && days < 0) || c.status === "Crítico";
+  });
 
   return (
     <Sidebar collapsible="icon">

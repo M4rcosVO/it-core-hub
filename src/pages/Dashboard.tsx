@@ -15,6 +15,8 @@ import {
   ArrowRight,
   Activity,
   History,
+  ShieldCheck,
+  BriefcaseBusiness,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,13 +24,38 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAudit } from "@/components/AuditContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 import { BarChart, PieChart } from "@/components/InventoryCharts";
+import { format, parse, differenceInDays, isPast } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useState } from "react";
 
 import { computers, mobiles, softwares, emprestimos, contratosData, acessosData, ipList, setores } from "@/data/mockData";
+
+const getDaysRemaining = (dateStr: string) => {
+  if (!dateStr || dateStr === "—" || dateStr.includes("Automática") || dateStr === "Pagamento Anual") return null;
+  try {
+    const d = parse(dateStr, "dd/MM/yyyy", new Date());
+    return differenceInDays(d, new Date());
+  } catch (e) {
+    return null;
+  }
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { logs } = useAudit();
+  const { toast } = useToast();
+  const [isResolutionCenterOpen, setIsResolutionCenterOpen] = useState(false);
+  const [snoozedAlerts, setSnoozedAlerts] = useState<string[]>([]);
   // --- DYNAMIC KPIs CALCULATION ---
   const activeComps = computers.filter(c => c.status === "Ativo").length;
   const maintComps = computers.filter(c => c.status === "Em Manutenção").length;
@@ -68,38 +95,59 @@ export default function Dashboard() {
     { name: "Servidor de Dados (ERP)", status: erpServer?.status === "Em Manutenção" ? "offline" : "online", provider: erpServer?.hostname || "N/A" },
   ];
 
-  // --- DYNAMIC ALERTS ---
   const alerts = [];
 
-  // Contracts Alerts
+  // 1. Contracts Alerts (Precise)
   contratosData.forEach(c => {
-    if (c.status === "Crítico" || c.status === "Atenção") {
-      alerts.push({ id: `crt-${c.id}`, message: `Contrato ${c.fornecedor} vence em ${c.vencimento}`, type: c.status === "Crítico" ? "warning" : "info", date: "Contratos" });
+    const days = getDaysRemaining(c.vencimento);
+    if (days !== null) {
+      if (days < 0 || c.status === "Crítico") {
+        alerts.push({ id: `crt-${c.id}`, message: `Contrato ${c.fornecedor} EXPIRADO ou CRÍTICO`, type: "critical", module: "Contratos" });
+      } else if (days <= 30 || c.status === "Atenção") {
+        alerts.push({ id: `crt-${c.id}`, message: `Contrato ${c.fornecedor} vence em ${days} dias`, type: "warning", module: "Contratos" });
+      }
     }
   });
 
-  // Software Limits
+  // 2. Warranty Alerts (Inventory)
+  [...computers, ...mobiles].forEach((a: any) => {
+    if (a.garantiaVencimento) {
+      const days = getDaysRemaining(a.garantiaVencimento);
+      if (days !== null) {
+        if (days < 0) {
+          alerts.push({ id: `gar-${a.id}`, message: `Garantia do ativo ${a.hostname || a.modelo} EXPIRADA!`, type: "critical", module: "Inventário" });
+        } else if (days <= 45) {
+          alerts.push({ id: `gar-${a.id}`, message: `Garantia de ${a.hostname || a.modelo} expira em ${days} dias`, type: "warning", module: "Inventário" });
+        }
+      }
+    }
+  });
+
+  // 3. Software Limits
   softwares.forEach(s => {
     const uso = s.assigned / s.qtd;
-    if (uso >= 0.9) {
-      alerts.push({ id: `sw-${s.id}`, message: `Uso da licença ${s.nome} atingiu ${Math.round(uso * 100)}%`, type: uso >= 1 ? "warning" : "info", date: "Softwares" });
+    if (uso >= 1) {
+      alerts.push({ id: `sw-${s.id}`, message: `Licença ${s.nome} ESGOTADA (100% uso)`, type: "critical", module: "Softwares" });
+    } else if (uso >= 0.9) {
+      alerts.push({ id: `sw-${s.id}`, message: `Uso de ${s.nome} em nível crítico (${Math.round(uso * 100)}%)`, type: "warning", module: "Softwares" });
     }
   });
 
-  // Loans Late
+  // 4. Loans Late
   emprestimos.forEach(e => {
     if (e.status === "Atrasado") {
-      alerts.push({ id: `emp-${e.id}`, message: `Empréstimo de ${e.equipamento} para ${e.solicitante} está Atrasado!`, type: "warning", date: "Inventário" });
+      alerts.push({ id: `emp-${e.id}`, message: `Empréstimo de ${e.equipamento} para ${e.solicitante} ATRASADO`, type: "critical", module: "Inventário" });
     }
   });
 
-  // Network Offline (Mocked)
-  if (primaryLink?.status === "Crítico") {
-    alerts.push({ id: "link-down", message: `Queda no link principal detectada (${primaryLink.fornecedor})`, type: "warning", date: "Rede" });
-  }
+  // Sort: Critical first
+  alerts.sort((a, b) => (a.type === "critical" ? -1 : 1));
 
-  // Se houver poucos alertas, garante que os mais importantes (Warnings) fiquem em cima
-  alerts.sort((a, b) => (a.type === "warning" ? -1 : 1));
+  // Filter out snoozed alerts
+  const activeAlerts = alerts.filter(a => !snoozedAlerts.includes(a.id));
+
+  const criticalCount = activeAlerts.filter(a => a.type === 'critical').length;
+  const warningCount = activeAlerts.filter(a => a.type === 'warning').length;
 
   // --- BI CHART DATA ---
   const computersBySector = setores.filter(s => s !== "Todos").map(s => ({
@@ -123,30 +171,144 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Central de Alertas - Proactive notifications */}
-      {alerts.filter(a => a.type === 'warning').length > 0 && (
-        <Card className="bg-destructive/5 border-destructive/20 shadow-sm animate-in slide-in-from-top-4 duration-500 overflow-hidden">
-          <div className="flex h-1 bg-destructive/20 w-full overflow-hidden">
-            <div className="h-full bg-destructive animate-pulse w-1/3" />
-          </div>
-          <CardContent className="p-4 flex items-start gap-4">
-            <div className="p-2 bg-destructive/10 rounded-full ring-4 ring-destructive/5">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
+      {/* Advanced Alert Banner */}
+      {activeAlerts.length > 0 && (
+        <Card className={`relative overflow-hidden shadow-lg border-2 animate-in slide-in-from-top-4 duration-700 ${criticalCount > 0 ? 'border-destructive/30 bg-destructive/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
+          <div className="absolute top-0 left-0 w-1 h-full bg-destructive animate-pulse" />
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+              <div className="flex items-start gap-4">
+                <div className={`p-3 rounded-xl ring-4 ${criticalCount > 0 ? 'bg-destructive/10 ring-destructive/5 text-destructive' : 'bg-amber-500/10 ring-amber-500/5 text-amber-600'}`}>
+                  <AlertTriangle className={`h-6 w-6 ${criticalCount > 0 ? 'animate-bounce' : ''}`} />
+                </div>
+                <div>
+                  <h2 className={`text-lg font-bold ${criticalCount > 0 ? 'text-destructive' : 'text-amber-700'}`}>
+                    Atenção Operacional
+                  </h2>
+                  <p className="text-sm font-medium text-muted-foreground mt-1 max-w-lg">
+                    Detectamos <span className="text-destructive font-bold">{criticalCount} itens críticos</span> e <span className="text-amber-600 font-bold">{warningCount} avisos</span> que requerem análise na gestão do parque tecnológico.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                {/* Summary Badges */}
+                <div className="flex -space-x-2">
+                  {["Inventário", "Contratos", "Softwares"].map((mod, i) => {
+                    const count = activeAlerts.filter(a => a.module === mod).length;
+                    if (count === 0) return null;
+                    return (
+                      <div key={mod} className="h-8 px-3 flex items-center gap-2 rounded-full bg-background border shadow-sm text-xs font-bold" title={`${count} alertas em ${mod}`}>
+                        <div className={`h-1.5 w-1.5 rounded-full ${activeAlerts.some(a => a.module === mod && a.type === 'critical') ? 'bg-destructive animate-pulse' : 'bg-amber-500'}`} />
+                        {mod}
+                      </div>
+                    );
+                  })}
+                </div>
+                <Button
+                  className={`${criticalCount > 0 ? 'bg-destructive hover:bg-destructive/90' : 'bg-amber-600 hover:bg-amber-700'} text-white shadow-md`}
+                  onClick={() => setIsResolutionCenterOpen(true)}
+                >
+                  Ver Detalhes e Resolver
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex-1">
-              <h2 className="text-sm font-bold text-destructive flex items-center gap-2">
-                Atenção: {alerts.filter(a => a.type === 'warning').length} itens críticos detectados
-              </h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                Existem contratos vencendo e ativos em manutenção que requerem sua atenção imediata na gestão do parque.
-              </p>
-            </div>
-            <Button variant="outline" size="sm" className="border-destructive/20 text-destructive hover:bg-destructive/10" onClick={() => navigate('/inventario')}>
-              Gerenciar Tudo
-            </Button>
           </CardContent>
         </Card>
       )}
+
+      {/* Central de Resolução - Modal */}
+      <Dialog open={isResolutionCenterOpen} onOpenChange={setIsResolutionCenterOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 border-none shadow-2xl">
+          <DialogHeader className="p-8 pb-4 bg-gradient-to-r from-primary/10 via-background to-background">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary/20 rounded-2xl ring-8 ring-primary/5">
+                <Shield className="h-6 w-6 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <DialogTitle className="text-2xl font-black tracking-tight italic uppercase">
+                  Central de Resolução
+                </DialogTitle>
+                <DialogDescription className="text-sm font-medium text-muted-foreground/80">
+                  Gestão estratégica de alertas e conformidade do parque tecnológico.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden px-8 pb-8 mt-2 min-h-[400px]">
+            <ScrollArea className="h-[500px] pr-6">
+              <div className="space-y-5 py-4">
+                {activeAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={`flex gap-5 p-5 rounded-2xl border-2 transition-all group hover:scale-[1.01] hover:shadow-xl ${alert.type === 'critical' ? 'border-destructive/20 bg-destructive/5 shadow-destructive/5' : 'border-amber-500/20 bg-amber-500/5 shadow-amber-500/5'}`}
+                  >
+                    <div className={`mt-1.5 h-4 w-4 rounded-full shrink-0 border-4 border-background shadow-sm ${alert.type === 'critical' ? 'bg-destructive animate-pulse' : 'bg-amber-500'}`} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start gap-4">
+                        <p className="text-base font-bold leading-tight group-hover:text-primary transition-colors slashed-zero">
+                          {alert.message}
+                        </p>
+                        <Badge variant="outline" className={`text-[10px] shrink-0 uppercase tracking-widest font-black px-2 py-1 ${alert.type === 'critical' ? 'text-destructive border-destructive/30 bg-destructive/10' : 'border-amber-500/30 text-amber-700 bg-amber-500/10'}`}>
+                          {alert.module}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-3 font-semibold leading-relaxed opacity-70">
+                        {alert.type === 'critical' ? 'CRÍTICO: Impacto imediato na conformidade. Requer intervenção urgente.' : 'AVISO: Recomendamos análise preventiva para garantir a continuidade.'}
+                      </p>
+
+                      <div className="flex items-center gap-4 mt-6 pt-5 border-t border-muted/30">
+                        <Button
+                          size="sm"
+                          variant={alert.type === 'critical' ? 'destructive' : 'default'}
+                          className="h-10 px-6 text-[11px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
+                          onClick={() => {
+                            setIsResolutionCenterOpen(false);
+                            if (alert.module === 'Contratos') {
+                              navigate('/contratos');
+                            } else if (alert.id.startsWith('sw-')) {
+                              navigate('/inventario?tab=softwares');
+                            } else if (alert.id.startsWith('emp-')) {
+                              navigate('/inventario?tab=emprestimos');
+                            } else {
+                              navigate('/inventario');
+                            }
+                          }}
+                        >
+                          {alert.id.startsWith('sw-') ? 'Renovar Licença' : alert.id.startsWith('emp-') ? 'Ver Empréstimo' : 'Ver Detalhes'}
+                          <ArrowRight className="ml-2 h-3 w-3 transition-transform group-hover:translate-x-1" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-10 px-4 text-[11px] font-bold text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                          onClick={() => {
+                            setSnoozedAlerts(prev => [...prev, alert.id]);
+                            toast({ title: "Lembrete adiado", description: "O alerta foi removido temporariamente da sua visão principal." });
+                          }}
+                        >
+                          Lembrar depois
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {activeAlerts.length === 0 && (
+                  <div className="py-12 text-center space-y-4">
+                    <div className="bg-success/10 text-success inline-flex p-4 rounded-full ring-8 ring-success/5 mb-2">
+                      <ShieldCheck className="h-12 w-12" />
+                    </div>
+                    <h3 className="text-xl font-bold italic uppercase tracking-tighter">Conformidade Total</h3>
+                    <p className="text-muted-foreground text-sm px-12">Nenhuma pendência crítica detectada no momento. Bom trabalho!</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* KPI Cards - clickable, route to module */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -187,17 +349,31 @@ export default function Dashboard() {
           <CardContent>
             <ScrollArea className="h-[320px] pr-4">
               <div className="space-y-4">
-                {alerts.length > 0 ? (
-                  alerts.map((alert) => (
-                    <div key={alert.id} className="flex gap-4 p-3 rounded-lg bg-accent/20 border border-accent/30 group hover:border-primary/30 transition-all">
-                      <div className={`mt-1 h-2 w-2 rounded-full ${alert.type === 'warning' ? 'bg-destructive animate-pulse' : 'bg-primary'}`} />
+                {activeAlerts.length > 0 ? (
+                  activeAlerts.map((alert) => (
+                    <div key={alert.id} className={`flex gap-4 p-3 rounded-lg bg-accent/20 border transition-all ${alert.type === 'critical' ? 'border-destructive/20 bg-destructive/5' : 'border-accent/30'}`}>
+                      <div className={`mt-1 h-2 w-2 rounded-full ${alert.type === 'critical' ? 'bg-destructive animate-pulse' : 'bg-amber-500'}`} />
                       <div className="flex-1">
                         <div className="flex justify-between items-start">
                           <p className="text-sm font-medium">{alert.message}</p>
-                          <Badge variant="outline" className="text-[9px] uppercase tracking-tighter">{alert.date}</Badge>
+                          <Badge variant="outline" className={`text-[9px] uppercase tracking-tighter ${alert.type === 'critical' ? 'text-destructive border-destructive/30' : ''}`}>{alert.module}</Badge>
                         </div>
                         <div className="flex items-center gap-4 mt-2">
-                          <Button variant="link" className="p-0 h-auto text-xs text-primary font-bold group-hover:underline" onClick={() => navigate(alert.date === 'Contratos' ? '/contratos' : '/inventario')}>
+                          <Button
+                            variant="link"
+                            className={`p-0 h-auto text-xs font-bold group-hover:underline ${alert.type === 'critical' ? 'text-destructive' : 'text-primary'}`}
+                            onClick={() => {
+                              if (alert.module === 'Contratos') {
+                                navigate('/contratos');
+                              } else if (alert.id.startsWith('sw-')) {
+                                navigate('/inventario?tab=softwares');
+                              } else if (alert.id.startsWith('emp-')) {
+                                navigate('/inventario?tab=emprestimos');
+                              } else {
+                                navigate('/inventario');
+                              }
+                            }}
+                          >
                             Resolver Agora
                           </Button>
                         </div>
