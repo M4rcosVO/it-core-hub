@@ -11,8 +11,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const rolePermissions: Record<Role, string[]> = {
-    "Administrador": ["Dashboard", "Inventário", "Rede", "Contratos", "Wiki", "Acessos", "Configurações", "Rotinas", "Calendário"],
-    "Técnico N1": ["Dashboard", "Inventário", "Wiki", "Rotinas", "Calendário"],
+    "Administrador": ["Dashboard", "Inventário", "Rede & Infra", "Contratos", "Wiki", "Acessos", "Configurações", "Rotinas", "Calendário"],
+    "Técnico N1": ["Dashboard", "Inventário", "Rede & Infra", "Wiki", "Rotinas", "Calendário"],
     "Auditor": ["Dashboard", "Auditoria", "Inventário", "Wiki", "Calendário"]
 };
 

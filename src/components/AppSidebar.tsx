@@ -46,7 +46,7 @@ const menuItems = [
   { title: "Inventário", url: "/inventario", icon: Monitor },
   { title: "Contratos", url: "/contratos", icon: FileSignature },
   { title: "Acessos", url: "/acessos", icon: Key },
-  { title: "Rede & VPN", url: "/rede", icon: Network },
+  { title: "Rede & Infra", url: "/rede", icon: Network },
   { title: "Rotinas", url: "/rotinas", icon: CheckSquare },
   { title: "Calendário", url: "/calendario", icon: CalendarDays },
   { title: "Wiki", url: "/wiki", icon: BookOpen },

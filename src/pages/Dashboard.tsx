@@ -75,12 +75,12 @@ export default function Dashboard() {
   const totalIps = ipList.length;
 
   const kpis = [
-    { label: "Computadores", value: activeComps, icon: Monitor, trend: `${activeComps} Ativos, ${maintComps} Manutenção`, route: "/inventario" },
-    { label: "Disp. Móveis", value: activeMobiles, icon: Smartphone, trend: `${inactiveMobiles} Desativado(s)`, route: "/inventario" },
-    { label: "Softwares (Licenças)", value: totalSoftwareQtd, icon: AppWindow, trend: `${totalSoftwareAssigned} em uso`, route: "/inventario" },
+    { label: "Computadores", value: activeComps, icon: Monitor, trend: `${activeComps} Ativos, ${maintComps} Manutenção`, route: "/inventario?tab=computers" },
+    { label: "Disp. Móveis", value: activeMobiles, icon: Smartphone, trend: `${inactiveMobiles} Desativado(s)`, route: "/inventario?tab=mobiles" },
+    { label: "Softwares (Licenças)", value: totalSoftwareQtd, icon: AppWindow, trend: `${totalSoftwareAssigned} em uso`, route: "/inventario?tab=softwares" },
     { label: "Contratos Ativos", value: activeContracts, icon: FileSignature, trend: `${criticalContracts} Crítico(s)`, route: "/contratos" },
     { label: "Itens Cofre/Rede", value: totalAcessos, icon: Key, trend: `${vpnAcessos} VPN(s) config.`, route: "/acessos" },
-    { label: "IPs em Uso", value: totalIps, icon: Globe, trend: "Monitorados no IPAM", route: "/rede" },
+    { label: "IPs em Uso", value: totalIps, icon: Globe, trend: "Monitorados no IPAM", route: "/rede?tab=ipam" },
   ];
 
   // --- DYNAMIC STATUS CHECKS ---

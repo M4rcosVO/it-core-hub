@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Shield,
   Globe,
@@ -135,6 +136,16 @@ export default function Rede() {
   const { toast } = useToast();
   const { addLog } = useAudit();
 
+  const { search: searchParams } = useLocation();
+  const queryTab = new URLSearchParams(searchParams).get("tab");
+  const [activeTab, setActiveTab] = useState(queryTab || "vpn");
+
+  useEffect(() => {
+    if (queryTab) {
+      setActiveTab(queryTab);
+    }
+  }, [queryTab]);
+
   const filteredVpn = vpnUsers.filter((v) =>
     searchVpn === "" || v.nome.toLowerCase().includes(searchVpn.toLowerCase()) || v.login.toLowerCase().includes(searchVpn.toLowerCase())
   );
@@ -183,7 +194,7 @@ export default function Rede() {
         <p className="text-muted-foreground text-sm mt-1">Gerenciamento de acessos, endereçamentos e topologia física</p>
       </div>
 
-      <Tabs defaultValue="vpn">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="vpn" className="gap-2">
             <Shield className="h-4 w-4" />
