@@ -331,66 +331,64 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* BI Analytics Section */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-6">
-          <BarChart title="Computadores por Setor" data={computersBySector} />
-          <PieChart title="Disponibilidade Global" data={assetsByStatus} />
-        </div>
+      {/* BI Analytics Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <BarChart title="Computadores por Setor" data={computersBySector} />
+        <PieChart title="Disponibilidade Global" data={assetsByStatus} />
+      </div>
 
-        {/* Alerts & Critical Items */}
-        <Card className="shadow-sm border-l-4 border-l-destructive">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              Ações Necessárias
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[320px] pr-4">
-              <div className="space-y-4">
-                {activeAlerts.length > 0 ? (
-                  activeAlerts.map((alert) => (
-                    <div key={alert.id} className={`flex gap-4 p-3 rounded-lg bg-accent/20 border transition-all ${alert.type === 'critical' ? 'border-destructive/20 bg-destructive/5' : 'border-accent/30'}`}>
-                      <div className={`mt-1 h-2 w-2 rounded-full ${alert.type === 'critical' ? 'bg-destructive animate-pulse' : 'bg-amber-500'}`} />
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
-                          <p className="text-sm font-medium">{alert.message}</p>
-                          <Badge variant="outline" className={`text-[9px] uppercase tracking-tighter ${alert.type === 'critical' ? 'text-destructive border-destructive/30' : ''}`}>{alert.module}</Badge>
-                        </div>
-                        <div className="flex items-center gap-4 mt-2">
-                          <Button
-                            variant="link"
-                            className={`p-0 h-auto text-xs font-bold group-hover:underline ${alert.type === 'critical' ? 'text-destructive' : 'text-primary'}`}
-                            onClick={() => {
-                              if (alert.module === 'Contratos') {
-                                navigate('/contratos');
-                              } else if (alert.id.startsWith('sw-')) {
-                                navigate('/inventario?tab=softwares');
-                              } else if (alert.id.startsWith('emp-')) {
-                                navigate('/inventario?tab=emprestimos');
-                              } else {
-                                navigate('/inventario');
-                              }
-                            }}
-                          >
-                            Resolver Agora
-                          </Button>
-                        </div>
+      {/* Alerts & Critical Items */}
+      <Card className="shadow-sm border-l-4 border-l-destructive transition-all">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            Ações Necessárias
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-4">
+          <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
+            <div className="space-y-4">
+              {activeAlerts.length > 0 ? (
+                activeAlerts.map((alert) => (
+                  <div key={alert.id} className={`flex gap-4 p-3 rounded-lg bg-accent/20 border transition-all ${alert.type === 'critical' ? 'border-destructive/20 bg-destructive/5' : 'border-accent/30'}`}>
+                    <div className={`mt-1 h-2 w-2 rounded-full ${alert.type === 'critical' ? 'bg-destructive animate-pulse' : 'bg-amber-500'}`} />
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start">
+                        <p className="text-sm font-medium">{alert.message}</p>
+                        <Badge variant="outline" className={`text-[9px] uppercase tracking-tighter ${alert.type === 'critical' ? 'text-destructive border-destructive/30' : ''}`}>{alert.module}</Badge>
+                      </div>
+                      <div className="flex items-center gap-4 mt-2">
+                        <Button
+                          variant="link"
+                          className={`p-0 h-auto text-xs font-bold group-hover:underline ${alert.type === 'critical' ? 'text-destructive' : 'text-primary'}`}
+                          onClick={() => {
+                            if (alert.module === 'Contratos') {
+                              navigate('/contratos');
+                            } else if (alert.id.startsWith('sw-')) {
+                              navigate('/inventario?tab=softwares');
+                            } else if (alert.id.startsWith('emp-')) {
+                              navigate('/inventario?tab=emprestimos');
+                            } else {
+                              navigate('/inventario');
+                            }
+                          }}
+                        >
+                          Resolver Agora
+                        </Button>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-48 text-muted-foreground opacity-40">
-                    <CheckCircle2 className="h-10 w-10 mb-2" />
-                    <p className="text-sm">Parabéns! Nenhuma pendência crítica.</p>
                   </div>
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground opacity-40">
+                  <CheckCircle2 className="h-10 w-10 mb-2" />
+                  <p className="text-sm">Parabéns! Nenhuma pendência crítica.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Check */}
