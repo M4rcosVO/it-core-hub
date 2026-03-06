@@ -36,7 +36,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { computers, mobiles, softwares, emprestimos, contratosData, acessosData, ipList, setores } from "@/data/mockData";
 
@@ -56,6 +56,43 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [isResolutionCenterOpen, setIsResolutionCenterOpen] = useState(false);
   const [snoozedAlerts, setSnoozedAlerts] = useState<string[]>([]);
+
+  // Real-time Service Status State
+  const [serviceStatus, setServiceStatus] = useState([
+    { id: 1, name: "Gateway Firewall", provider: "Fortinet Gateway", type: "gateway", ip: "10.0.0.1", status: "online", ping: 2 },
+    { id: 2, name: "Link Primário", provider: "Vivo Empresas 1Gbps", type: "link", ip: "1.1.1.1", status: "online", ping: 15 },
+    { id: 3, name: "Link Backup", provider: "Claro Fibra 600M", type: "link", ip: "8.8.8.8", status: "online", ping: 25 },
+    { id: 4, name: "Servidor de Dados", provider: "SRV-ERP-01", type: "server", ip: "192.168.1.10", status: "online", ping: 1 },
+    { id: 4, name: "Domain Controller", provider: "WKS-ADM-001", type: "server", ip: "192.168.1.20", status: "online", ping: 1 },
+  ]);
+
+  // Ping Simulation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setServiceStatus(prev => prev.map(service => {
+        let basePing = service.ping;
+        if (service.type === 'link') {
+          basePing = service.name.includes("Primário") ? 15 : 25;
+        } else if (service.type === 'gateway') {
+          basePing = 2;
+        } else {
+          basePing = 1;
+        }
+
+        const varPing = Math.floor(Math.random() * 8) - 3;
+        let newPing = basePing + varPing;
+        if (newPing < 1) newPing = 1;
+
+        if (Math.random() > 0.95 && service.type === 'link') {
+          newPing += Math.floor(Math.random() * 40);
+        }
+
+        return { ...service, ping: newPing };
+      }));
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, []);
   // --- DYNAMIC KPIs CALCULATION ---
   const activeComps = computers.filter(c => c.status === "Ativo").length;
   const maintComps = computers.filter(c => c.status === "Em Manutenção").length;
@@ -83,17 +120,7 @@ export default function Dashboard() {
     { label: "IPs em Uso", value: totalIps, icon: Globe, trend: "Monitorados no IPAM", route: "/rede?tab=ipam" },
   ];
 
-  // --- DYNAMIC STATUS CHECKS ---
-  // Mocking status logic based on Contracts and Network
-  const primaryLink = contratosData.find(c => c.fornecedor.includes("Vivo"));
-  const backupLink = contratosData.find(c => c.fornecedor.includes("Claro"));
-  const erpServer = computers.find(c => c.hostname === "SRV-ERP-01");
-
-  const statusChecks = [
-    { name: "Link Internet Primário", status: primaryLink?.status === "Crítico" ? "offline" : "online", provider: primaryLink?.fornecedor || "N/A" },
-    { name: "Link Backup (Failover)", status: backupLink?.status === "Atenção" ? "degraded" : "online", provider: backupLink?.fornecedor || "N/A" },
-    { name: "Servidor de Dados (ERP)", status: erpServer?.status === "Em Manutenção" ? "offline" : "online", provider: erpServer?.hostname || "N/A" },
-  ];
+  // --- DYNAMIC STATUS CHECKS --- (Replaced by state)
 
   const alerts = [];
 
@@ -393,35 +420,42 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status Check */}
         <Card className="shadow-sm">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
               <Server className="h-4 w-4 text-muted-foreground" />
               Status dos Serviços
             </CardTitle>
+            <span className="flex h-2 w-2 rounded-full bg-success animate-ping" title="Monitoramento Ativo" />
           </CardHeader>
           <CardContent className="space-y-3">
-            {statusChecks.map((check) => (
+            {serviceStatus.map((service, index) => (
               <div
-                key={check.name}
-                className="flex items-center justify-between rounded-lg border p-3"
+                key={index}
+                className="flex items-center justify-between rounded-lg border p-3 transition-opacity"
               >
                 <div className="flex items-center gap-3">
-                  {check.status === "online" ? (
-                    <Wifi className="h-4 w-4 text-success" />
+                  {service.type === "link" ? (
+                    <Globe className="h-4 w-4 text-muted-foreground" />
+                  ) : service.type === "gateway" ? (
+                    <Shield className="h-4 w-4 text-muted-foreground" />
                   ) : (
-                    <WifiOff className="h-4 w-4 text-destructive" />
+                    <Server className="h-4 w-4 text-muted-foreground" />
                   )}
                   <div>
-                    <p className="text-sm font-medium">{check.name}</p>
-                    <p className="text-xs text-muted-foreground">{check.provider}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium leading-none">{service.name}</p>
+                      <span className="text-[10px] text-muted-foreground font-mono">{service.ip}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{service.provider}</p>
                   </div>
                 </div>
-                <Badge
-                  variant={check.status === "online" ? "default" : "destructive"}
-                  className={check.status === "online" ? "bg-success hover:bg-success/90" : ""}
-                >
-                  {check.status === "online" ? "Online" : "Offline"}
-                </Badge>
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-medium">{service.ping}ms</span>
+                    <div className={`h-2 w-2 rounded-full ${service.status === 'online' ? 'bg-success' : 'bg-destructive'}`} />
+                  </div>
+                  <span className="text-[10px] uppercase font-bold text-success/80">Online</span>
+                </div>
               </div>
             ))}
           </CardContent>
