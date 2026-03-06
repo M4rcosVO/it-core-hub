@@ -104,21 +104,85 @@ export default function Inventario() {
   const [auditSearchId, setAuditSearchId] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showDevolvidos, setShowDevolvidos] = useState(false);
 
   const { search: searchParams } = useLocation();
   const queryTab = new URLSearchParams(searchParams).get("tab");
   const [activeTab, setActiveTab] = useState(queryTab || "computers");
 
+  // Local mutable list for newly added computers
+  const [localComputers, setLocalComputers] = useState(computers);
+
+  // Novo Ativo form state
+  const [novoAtivoOpen, setNovoAtivoOpen] = useState(false);
+  const [novoTipo, setNovoTipo] = useState("");
+  const [novoIdentificador, setNovoIdentificador] = useState("");
+  const [novoResponsavel, setNovoResponsavel] = useState("");
+  const [novoSetor, setNovoSetor] = useState("");
+  const [novoDataCompra, setNovoDataCompra] = useState("");
+  const [novoGarantia, setNovoGarantia] = useState("");
+
   useEffect(() => {
-    if (queryTab) {
-      setActiveTab(queryTab);
-    }
+    if (queryTab) setActiveTab(queryTab);
   }, [queryTab]);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleSaveNovoAtivo = () => {
+    if (!novoIdentificador.trim() || !novoTipo) {
+      toast({ title: "Campos obrigatórios", description: "Preencha Tipo e Identificador.", variant: "destructive" });
+      return;
+    }
+    const formatDate = (iso: string) => {
+      if (!iso) return "—";
+      const [y, m, d] = iso.split("-");
+      return `${d}/${m}/${y}`;
+    };
+    const newComp = {
+      id: Date.now(),
+      hostname: novoIdentificador,
+      modelo: novoIdentificador,
+      processador: "—",
+      ram: "—",
+      armazenamento: "—",
+      so: "—",
+      responsavel: novoResponsavel || "—",
+      setor: novoSetor || "Estoque",
+      status: "Ativo",
+      patrimonio: `TI-${Date.now().toString().slice(-5)}`,
+      garantiaVencimento: formatDate(novoGarantia),
+      dataCompra: formatDate(novoDataCompra),
+      termoAssinado: false,
+      historico: [{ evento: "Cadastro", data: new Date().toLocaleDateString("pt-BR"), usuario: "Administrador" }],
+    };
+    setLocalComputers(prev => [newComp, ...prev]);
+    addLog({ user: "Administrador", action: "Ativo Cadastrado", details: `Novo ativo '${novoIdentificador}' (${novoTipo}) adicionado ao inventário.`, module: 'Inventário' });
+    toast({ title: "Ativo salvo!", description: `'${novoIdentificador}' adicionado ao inventário.` });
+    setNovoAtivoOpen(false);
+    setNovoTipo(""); setNovoIdentificador(""); setNovoResponsavel(""); setNovoSetor(""); setNovoDataCompra(""); setNovoGarantia("");
+    setActiveTab("computers"); // jump to the computers tab to see the new entry
+  };
+
+  const handleSearchScan = () => {
+    const allAssets = [...computers, ...mobiles, ...peripherals];
+    if (auditSearchId.trim()) {
+      const found = allAssets.find(a =>
+        (a as any).patrimonio?.toLowerCase() === auditSearchId.trim().toLowerCase()
+      );
+      if (found) {
+        setSelectedAuditAsset(found);
+        toast({ title: "Ativo Encontrado", description: `Patrimônio ${(found as any).patrimonio} localizado.` });
+        addLog({ user: "Usuário Logado", action: "Auditoria QR", details: `Buscou ativo por ID: ${auditSearchId}`, module: 'Inventário' });
+      } else {
+        toast({ title: "Não encontrado", description: `Nenhum ativo com patrimônio "${auditSearchId}" foi localizado.`, variant: "destructive" });
+      }
+      return;
+    }
+    handleSimulateScan();
+  };
 
   const handleSimulateScan = () => {
     setIsVerifying(true);
@@ -153,7 +217,7 @@ export default function Inventario() {
     window.print();
   };
 
-  const filteredComputers = computers.filter((c) => {
+  const filteredComputers = localComputers.filter((c) => {
     const matchSearch = search === "" || Object.values(c).some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
     const matchSetor = setorFilter === "Todos" || c.setor === setorFilter;
     return matchSearch && matchSetor;
@@ -185,15 +249,26 @@ export default function Inventario() {
   };
 
   const handleExportCSV = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let dataToExport: Record<string, unknown>[] = [];
     let filename = "";
 
-    // Exportação simples da aba ativa focada nos Computadores por enquanto
-    dataToExport = filteredComputers.map(c => ({
-      ...c,
-      termoAssinado: c.termoAssinado ? "Sim" : "Não"
-    }));
-    filename = "IT_Inventario_Computadores";
+    if (activeTab === "computers") {
+      dataToExport = filteredComputers.map(c => ({ ...c, termoAssinado: c.termoAssinado ? "Sim" : "Não" }));
+      filename = "IT_Inventario_Computadores";
+    } else if (activeTab === "mobiles") {
+      dataToExport = filteredMobiles as unknown as Record<string, unknown>[];
+      filename = "IT_Inventario_Moveis";
+    } else if (activeTab === "peripherals") {
+      dataToExport = filteredPeripherals as unknown as Record<string, unknown>[];
+      filename = "IT_Inventario_Perifericos";
+    } else if (activeTab === "softwares") {
+      dataToExport = filteredSoftwares as unknown as Record<string, unknown>[];
+      filename = "IT_Inventario_Softwares";
+    } else {
+      toast({ title: "Aba sem exportação", description: "Selecione a aba de Computadores, Móveis, Periféricos ou Softwares para exportar." });
+      return;
+    }
 
     if (dataToExport.length === 0) return;
 
@@ -277,7 +352,7 @@ export default function Inventario() {
                         onChange={(e) => setAuditSearchId(e.target.value)}
                         className="font-mono text-sm"
                       />
-                      <Button size="icon" onClick={handleSimulateScan} disabled={isVerifying}>
+                      <Button size="icon" onClick={handleSearchScan} disabled={isVerifying}>
                         <Search className="h-4 w-4" />
                       </Button>
                     </div>
@@ -302,7 +377,7 @@ export default function Inventario() {
 
                   <Button className="w-full gap-2" variant="secondary" onClick={handleSimulateScan} disabled={isVerifying}>
                     <QrCode className="h-4 w-4" />
-                    Simular Scan de Câmera
+                    Simular Scan Aleatório
                   </Button>
                 </div>
                 <DialogFooter>
@@ -315,7 +390,7 @@ export default function Inventario() {
               </DialogContent>
             </Dialog>
 
-            <Dialog>
+            <Dialog open={novoAtivoOpen} onOpenChange={setNovoAtivoOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2">
                   <Plus className="h-4 w-4" />
@@ -326,43 +401,64 @@ export default function Inventario() {
                 <DialogHeader>
                   <DialogTitle>Cadastrar Novo Ativo</DialogTitle>
                   <DialogDescription>
-                    Adicione um novo hardware ou software ao inventário da TI.
+                    Adicione um novo hardware ao inventário da TI.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Tipo de Ativo</label>
-                    <Select>
+                    <label className="text-sm font-medium">Tipo de Ativo *</label>
+                    <Select value={novoTipo} onValueChange={setNovoTipo}>
                       <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="computer">Computador / Notebook</SelectItem>
                         <SelectItem value="mobile">Smartphone / Tablet</SelectItem>
                         <SelectItem value="peripheral">Periférico (Monitor, Impressora)</SelectItem>
-                        <SelectItem value="software">Software / Licença</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Identificador (Hostname / Modelo / Nome)</label>
-                    <Input placeholder="Ex: WKS-ADM-002" />
+                    <label className="text-sm font-medium">Identificador (Hostname / Modelo) *</label>
+                    <Input
+                      placeholder="Ex: WKS-ADM-002"
+                      value={novoIdentificador}
+                      onChange={(e) => setNovoIdentificador(e.target.value)}
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Responsável / Setor</label>
-                    <Input placeholder="Ex: Financeiro" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Responsável</label>
+                      <Input
+                        placeholder="Ex: Carlos Silva"
+                        value={novoResponsavel}
+                        onChange={(e) => setNovoResponsavel(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Setor</label>
+                      <Select value={novoSetor} onValueChange={setNovoSetor}>
+                        <SelectTrigger><SelectValue placeholder="Setor..." /></SelectTrigger>
+                        <SelectContent>
+                          {["Administrativo", "Financeiro", "Comercial", "RH", "TI", "Datacenter", "Estoque"].map(s => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Data de Aquisição</label>
-                      <Input type="date" />
+                      <Input type="date" value={novoDataCompra} onChange={(e) => setNovoDataCompra(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Garantia / Vencimento</label>
-                      <Input type="date" />
+                      <Input type="date" value={novoGarantia} onChange={(e) => setNovoGarantia(e.target.value)} />
                     </div>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button">Salvar Ativo</Button>
+                  <Button variant="ghost" onClick={() => setNovoAtivoOpen(false)}>Cancelar</Button>
+                  <Button type="button" onClick={handleSaveNovoAtivo}>Salvar Ativo</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -407,12 +503,14 @@ export default function Inventario() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Ações ({selectedForPrint.length} ativos)</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => toast({ title: "Setor Alterado", description: "Ativos movidos para o novo setor com sucesso." })}>
+                  <DropdownMenuItem onClick={() => toast({ title: "Alterar Setor", description: `Use o detalhe do ativo para alterar o setor individualmente.` })}>
                     <Share2 className="mr-2 h-4 w-4" /> Alterar Setor
                   </DropdownMenuItem>
                   <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => {
+                    const count = selectedForPrint.length;
                     setSelectedForPrint([]);
-                    toast({ title: "Ativos Excluídos", description: "Os itens selecionados foram removidos do sistema." });
+                    addLog({ user: "Usuário Logado", action: "Ativos Excluídos", details: `${count} ativo(s) removidos via ação em massa.`, module: 'Inventário' });
+                    toast({ title: `${count} Ativo(s) Excluído(s)`, description: "Os itens selecionados foram removidos do sistema." });
                   }}>
                     <Trash2 className="mr-2 h-4 w-4" /> Excluir Selecionados
                   </DropdownMenuItem>
@@ -581,7 +679,7 @@ export default function Inventario() {
                           </button>
                         </td>
                         <td className="p-3 font-medium">{m.modelo}</td>
-                        <td className="p-3 hidden md:table-cell">{m.especificacoes}</td>
+                        <td className="p-3 hidden md:table-cell">{m.chip}</td>
                         <td className="p-3 text-xs font-mono">{m.imei}</td>
                         <td className="p-3">{m.responsavel}</td>
                         <td className="p-3">
@@ -653,11 +751,11 @@ export default function Inventario() {
                     {filteredSoftwares.map((s) => (
                       <tr key={s.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => openDetail(s, "software")}>
                         <td className="p-3 font-medium">{s.nome}</td>
-                        <td className="p-3">{s.utilizadas} / {s.total}</td>
+                        <td className="p-3">{s.assigned} / {s.qtd}</td>
                         <td className="p-3">{s.vencimento}</td>
                         <td className="p-3">
-                          <Badge variant={(s.utilizadas / s.total) > 0.9 ? "destructive" : "default"}>
-                            {(s.utilizadas / s.total) >= 1 ? "Esgotado" : (s.utilizadas / s.total) > 0.8 ? "Crítico" : "Ok"}
+                          <Badge variant={(s.assigned / s.qtd) > 0.9 ? "destructive" : "default"}>
+                            {(s.assigned / s.qtd) >= 1 ? "Esgotado" : (s.assigned / s.qtd) > 0.8 ? "Crítico" : "Ok"}
                           </Badge>
                         </td>
                       </tr>
@@ -672,29 +770,46 @@ export default function Inventario() {
         <TabsContent value="emprestimos" className="mt-4">
           <Card className="shadow-sm">
             <CardContent className="p-0">
+              <div className="flex items-center justify-between px-4 py-3 border-b">
+                <span className="text-xs text-muted-foreground font-medium">
+                  {emprestimos.filter(e => e.status !== "Devolvido").length} empréstimo(s) ativo(s)
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => setShowDevolvidos(prev => !prev)}
+                >
+                  {showDevolvidos ? "Ocultar Devolvidos" : "Mostrar Devolvidos"}
+                </Button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium text-muted-foreground">Colaborador</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Ativo</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Saída</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Retorno</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Solicitante</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Equipamento</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Retirada</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Previsão Dev.</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {emprestimos.map((e) => (
-                      <tr key={e.id} className="border-b last:border-0 hover:bg-muted/30">
-                        <td className="p-3 font-medium">{e.colaborador}</td>
-                        <td className="p-3">{e.ativo}</td>
-                        <td className="p-3">{e.dataSaida}</td>
-                        <td className="p-3">{e.dataRetorno}</td>
-                        <td className="p-3">
-                          <Badge variant={e.status === "Atrasado" ? "destructive" : "default"}>{e.status}</Badge>
-                        </td>
-                      </tr>
-                    ))}
+                    {emprestimos
+                      .filter(e => showDevolvidos || e.status !== "Devolvido")
+                      .map((e) => (
+                        <tr key={e.id} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="p-3 font-medium">{e.solicitante}</td>
+                          <td className="p-3 text-xs font-mono">{e.equipamento}</td>
+                          <td className="p-3">{e.dataRetirada}</td>
+                          <td className="p-3">{e.previsaoDevolucao}</td>
+                          <td className="p-3">
+                            <Badge variant={e.status === "Atrasado" ? "destructive" : e.status === "Devolvido" ? "secondary" : "default"}>
+                              {e.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>

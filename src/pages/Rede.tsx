@@ -43,6 +43,7 @@ import {
 import { usePrivacy } from "@/components/PrivacyContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAudit } from "@/components/AuditContext";
+import { useData } from "@/components/DataContext";
 
 const initialVpnUsers = [
   { id: 1, nome: "Carlos Silva", login: "carlos.silva", status: "Ativo", criacao: "15/01/2024" },
@@ -52,16 +53,6 @@ const initialVpnUsers = [
   { id: 5, nome: "Pedro Mendes", login: "pedro.mendes", status: "Inativo", criacao: "22/11/2023" },
 ];
 
-const initialIpList = [
-  { ip: "192.168.1.10", dispositivo: "SRV-ERP-01", setor: "Datacenter" },
-  { ip: "192.168.1.11", dispositivo: "SRV-FILE-01", setor: "Datacenter" },
-  { ip: "192.168.1.20", dispositivo: "WKS-ADM-001", setor: "Administrativo" },
-  { ip: "192.168.1.50", dispositivo: "HP LaserJet M404", setor: "Administrativo" },
-  { ip: "192.168.1.55", dispositivo: "Fujitsu ScanSnap", setor: "Financeiro" },
-  { ip: "192.168.1.100", dispositivo: "AP-WIFI-01", setor: "TI" },
-  { ip: "192.168.1.101", dispositivo: "AP-WIFI-02", setor: "Comercial" },
-  { ip: "10.0.0.1", dispositivo: "Firewall Fortinet", setor: "Datacenter" },
-];
 
 const vlansList = [
   { id: 10, nome: "Servidores & Infra", faixa: "10.0.10.0/24", gateway: "10.0.10.1", dhcp: false, observacao: "Datacenter e Core" },
@@ -118,7 +109,7 @@ function TopologyNode({ icon, label, type }: { icon: React.ReactNode, label: str
 
 export default function Rede() {
   const [vpnUsers, setVpnUsers] = useState(initialVpnUsers);
-  const [ipListState, setIpListState] = useState(initialIpList);
+  const { ipList: ipListState, addIp } = useData();
   const [searchVpn, setSearchVpn] = useState("");
   const [searchIp, setSearchIp] = useState("");
   const [searchVlan, setSearchVlan] = useState("");
@@ -176,11 +167,7 @@ export default function Rede() {
       toast({ title: "Campos obrigatórios", description: "Preencha IP e Dispositivo.", variant: "destructive" });
       return;
     }
-    if (ipListState.some(i => i.ip === newIpAddr)) {
-      toast({ title: "IP já reservado", description: `O endereço ${newIpAddr} já existe no IPAM.`, variant: "destructive" });
-      return;
-    }
-    setIpListState(prev => [...prev, { ip: newIpAddr, dispositivo: newIpDevice, setor: newIpSetor || "—" }]);
+    addIp({ ip: newIpAddr, dispositivo: newIpDevice, setor: newIpSetor || "—" });
     addLog({ user: "Admin", action: "IP Reservado", details: `Reserva do IP ${newIpAddr} para o dispositivo ${newIpDevice}.`, module: "Rede" });
     setNewIpAddr(""); setNewIpDevice(""); setNewIpSetor("");
     setIpDialogOpen(false);

@@ -14,6 +14,7 @@ import {
   Download,
   Dices,
   Lock,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,22 +40,14 @@ import { useToast } from "@/hooks/use-toast";
 import { usePrivacy } from "@/components/PrivacyContext";
 import { useAuth } from "@/components/AuthContext";
 import { useAudit } from "@/components/AuditContext";
-
-const initialAcessos = [
-  { id: 1, nome: "FortiGate VPN", url: "vpn.gellak.com.br", usuario: "admin.ti", senha: "SuperSecretPassword123!", categoria: "VPN", setor: "TI", icon: Shield },
-  { id: 2, nome: "Totvs Protheus", url: "192.168.1.10:8080", usuario: "admin_erp", senha: "ErpPassword2024", categoria: "ERP", setor: "Geral", icon: Database },
-  { id: 3, nome: "Painel Admin Site", url: "gellak.com.br/wp-admin", usuario: "webmaster", senha: "Wp#Admin$2024", categoria: "Web", setor: "Marketing", icon: Globe },
-  { id: 4, nome: "Office 365 Admin", url: "admin.microsoft.com", usuario: "ti@gellak.com.br", senha: "O365@Gellak2024", categoria: "E-mail", setor: "TI", icon: Mail },
-  { id: 5, nome: "OpenVPN Filial SP", url: "sp.vpn.gellak.com.br", usuario: "joao.almeida", senha: "VpnSp2024!", categoria: "VPN", setor: "Comercial", icon: Shield },
-];
+import { useData, iconByCategoria, defaultIcon } from "@/components/DataContext";
 
 const categorias = ["Todas", "VPN", "ERP", "Web", "E-mail", "Banco de Dados", "Outros"];
 
 export default function Acessos() {
   const { userRole } = useAuth();
   const isAdmin = userRole === "Administrador";
-
-  const [acessosData, setAcessosData] = useState(initialAcessos);
+  const { acessos: acessosData, addAcesso, removeAcesso } = useData();
   const [search, setSearch] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("Todas");
   const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
@@ -127,18 +120,15 @@ export default function Acessos() {
       toast({ title: "Campos obrigatórios", description: "Preencha pelo menos o Nome e o Usuário.", variant: "destructive" });
       return;
     }
-    const iconMap: Record<string, typeof Shield> = { VPN: Shield, ERP: Database, Web: Globe, "E-mail": Mail };
-    const newEntry = {
-      id: Date.now(),
+    addAcesso({
       nome: newNome,
       url: newUrl || "—",
       usuario: newUsuario,
       senha: newPassword || "—",
       categoria: newCategoria || "Outros",
       setor: newSetor || "—",
-      icon: iconMap[newCategoria] ?? Key,
-    };
-    setAcessosData((prev) => [...prev, newEntry]);
+      icon: iconByCategoria[newCategoria] ?? defaultIcon,
+    });
     setNewNome(""); setNewUrl(""); setNewUsuario(""); setNewPassword(""); setNewCategoria(""); setNewSetor("");
     setDialogOpen(false);
     toast({
@@ -279,6 +269,7 @@ export default function Acessos() {
                   <th className="text-left p-3 font-medium text-muted-foreground">Usuário</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Senha</th>
                   <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Setor</th>
+                  <th className="text-center p-3 font-medium text-muted-foreground w-12"></th>
                 </tr>
               </thead>
               <tbody>
@@ -334,11 +325,26 @@ export default function Acessos() {
                       </div>
                     </td>
                     <td className="p-3 hidden md:table-cell">{a.setor}</td>
+                    <td className="p-3 text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Remover credencial"
+                        onClick={() => {
+                          removeAcesso(a.id);
+                          addLog({ user: "Administrador", action: "Credencial Removida", details: `Removeu credencial: ${a.nome} (${a.categoria})`, module: 'Acessos' });
+                          toast({ title: "Credencial removida", description: `"${a.nome}" foi excluída do cofre.` });
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
                 {filteredAcessos.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
                       Nenhuma credencial encontrada.
                     </td>
                   </tr>

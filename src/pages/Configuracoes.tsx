@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTheme } from "@/components/ThemeContext";
+import { useAudit } from "@/components/AuditContext";
 
 const teamMembers = [
   { id: 1, nome: "Lucas Ferreira", email: "lucas.f@gellak.com", cargo: "Coordenador de TI", status: "Ativo" },
@@ -54,34 +55,19 @@ const accessProfiles = [
   },
 ];
 
-const auditLogs = [
-  { id: 1, data: "03/03/2026 14:32", usuario: "Lucas Ferreira", acao: "Alterou o responsável do Notebook Dell #045 para Pedro Mendes" },
-  { id: 2, data: "03/03/2026 11:15", usuario: "Rafael Lima", acao: "Adicionou novo IP estático: 192.168.1.101 (AP-WIFI-02)" },
-  { id: 3, data: "02/03/2026 16:48", usuario: "Camila Souza", acao: "Upload do Termo de Responsabilidade — iPhone 14 (Ana Costa)" },
-  { id: 4, data: "02/03/2026 09:22", usuario: "Lucas Ferreira", acao: "Criou acesso VPN para Maria Santos" },
-  { id: 5, data: "01/03/2026 17:05", usuario: "Rafael Lima", acao: "Atualizou status do Servidor ERP para Offline" },
-  { id: 6, data: "01/03/2026 10:30", usuario: "Camila Souza", acao: "Resetou senha AD do usuário João Almeida" },
-  { id: 7, data: "28/02/2026 15:12", usuario: "Diego Martins", acao: "Desativou acesso VPN de Pedro Mendes" },
-  { id: 8, data: "28/02/2026 08:45", usuario: "Lucas Ferreira", acao: "Publicou artigo na Wiki: Configuração de Impressoras" },
-];
 
 export default function Configuracoes() {
   const [searchLog, setSearchLog] = useState("");
   const [moduleFilter, setModuleFilter] = useState("Todos");
   const { theme, toggleTheme } = useTheme();
+  const { logs: auditLogs, clearLogs } = useAudit();
 
   const filteredLogs = auditLogs.filter((log) => {
     const matchesSearch = searchLog === "" ||
-      log.usuario.toLowerCase().includes(searchLog.toLowerCase()) ||
-      log.acao.toLowerCase().includes(searchLog.toLowerCase());
-
-    // Simulating module detection from action text for demo
-    const matchesModule = moduleFilter === "Todos" ||
-      (moduleFilter === "Inventário" && log.acao.includes("Notebook")) ||
-      (moduleFilter === "Rede" && log.acao.includes("IP")) ||
-      (moduleFilter === "Acessos" && log.acao.includes("VPN")) ||
-      (moduleFilter === "Wiki" && log.acao.includes("Wiki"));
-
+      log.user.toLowerCase().includes(searchLog.toLowerCase()) ||
+      log.action.toLowerCase().includes(searchLog.toLowerCase()) ||
+      log.details.toLowerCase().includes(searchLog.toLowerCase());
+    const matchesModule = moduleFilter === "Todos" || log.module === moduleFilter;
     return matchesSearch && matchesModule;
   });
 
@@ -231,8 +217,8 @@ export default function Configuracoes() {
                 <option>Wiki</option>
               </select>
             </div>
-            <Button variant="outline" size="sm" className="gap-2 h-10">
-              <FileDown className="h-4 w-4" /> Exportar PDF
+            <Button variant="outline" size="sm" className="gap-2 h-10" onClick={clearLogs}>
+              <FileDown className="h-4 w-4" /> Limpar Log
             </Button>
           </div>
 
@@ -248,18 +234,33 @@ export default function Configuracoes() {
                   <thead>
                     <tr className="border-b bg-muted/50">
                       <th className="text-left p-3 font-medium text-muted-foreground w-40">Data/Hora</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground w-40">Usuário TI</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground w-32">Módulo</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground w-36">Usuário</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Ação Realizada</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredLogs.map((log) => (
-                      <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="p-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{log.data}</td>
-                        <td className="p-3 font-medium whitespace-nowrap">{log.usuario}</td>
-                        <td className="p-3">{log.acao}</td>
+                    {filteredLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="p-8 text-center text-muted-foreground text-sm">
+                          Nenhuma ação registrada nesta sessão.
+                        </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredLogs.map((log) => (
+                        <tr key={log.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="p-3 font-mono text-xs text-muted-foreground whitespace-nowrap">{log.timestamp}</td>
+                          <td className="p-3">
+                            <span className="text-[10px] font-semibold bg-accent px-2 py-0.5 rounded text-accent-foreground uppercase">{log.module}</span>
+                          </td>
+                          <td className="p-3 font-medium text-xs whitespace-nowrap">{log.user}</td>
+                          <td className="p-3 text-sm">
+                            <p className="font-medium">{log.action}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{log.details}</p>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

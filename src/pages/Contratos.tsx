@@ -34,90 +34,15 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAudit } from "@/components/AuditContext";
-
-// Mock data
-const contratosDataRaw = [
-    {
-        id: 1,
-        fornecedor: "Vivo Empresas",
-        servico: "Link Internet Dedicado 1Gbps",
-        tipo: "Conectividade",
-        vencimento: "15/12/2026",
-        valorMensal: "R$ 1.250,00",
-        status: "Ativo",
-        contatoNome: "Ana Gerente de Contas",
-        contatoTelefone: "(11) 99999-1111",
-        contatoEmail: "ana.corp@vivo.com.br",
-        sla: "99.9% uptime, 4h reparo",
-        observacoes: "Link primário da matriz. Possui IP Fixo x.x.x.x.",
-    },
-    {
-        id: 2,
-        fornecedor: "Claro Fibra",
-        servico: "Link Backup 600Mbps",
-        tipo: "Conectividade",
-        vencimento: "20/05/2025",
-        valorMensal: "R$ 300,00",
-        status: "Atenção",
-        contatoNome: "Suporte B2B Claro",
-        contatoTelefone: "0800 720 1234",
-        contatoEmail: "b2b@claro.com.br",
-        sla: "24h reparo",
-        observacoes: "Link secundário configurado em failover no FortiGate.",
-    },
-    {
-        id: 3,
-        fornecedor: "Simpress",
-        servico: "Outsourcing de Impressão (3 Maq.)",
-        tipo: "Equipamentos",
-        vencimento: "10/01/2025",
-        valorMensal: "R$ 850,00",
-        status: "Ativo",
-        contatoNome: "Técnico Regional",
-        contatoTelefone: "(11) 4004-9999",
-        contatoEmail: "suporte@simpress.com.br",
-        sla: "NBD (Next Business Day) para peças",
-        observacoes: "Inclui franquia de 10.000 cópias P&B mês.",
-    },
-    {
-        id: 4,
-        fornecedor: "Locaweb",
-        servico: "Hospedagem Site + E-mail",
-        tipo: "Software/Cloud",
-        vencimento: "05/08/2025",
-        valorMensal: "R$ 120,00",
-        status: "Ativo",
-        contatoNome: "Painel Locaweb",
-        contatoTelefone: "(11) 3544-0444",
-        contatoEmail: "—",
-        sla: "99.8% uptime",
-        observacoes: "Renovação automática no cartão corporativo.",
-    },
-    {
-        id: 5,
-        fornecedor: "Dell Computadores",
-        servico: "Garantia ProSupport Servers",
-        tipo: "Equipamentos",
-        vencimento: "20/11/2024",
-        valorMensal: "Pagamento Anual",
-        status: "Crítico",
-        contatoNome: "Dell ProSupport",
-        contatoTelefone: "0800 970 3355",
-        contatoEmail: "—",
-        sla: "Atendimento on-site 4h",
-        observacoes: "Urgente: Renovar para manter cobertura do SRV-ERP-01.",
-    },
-];
-
-const initialContratosData = contratosDataRaw;
+import { useData } from "@/components/DataContext";
 
 const tiposContrato = ["Todos", "Conectividade", "Equipamentos", "Software/Cloud", "Serviços"];
 
 export default function Contratos() {
-    const [contratosData, setContratosData] = useState(initialContratosData);
+    const { contratos: contratosData, addContrato } = useData();
     const [search, setSearch] = useState("");
     const [tipoFilter, setTipoFilter] = useState("Todos");
-    const [selectedContrato, setSelectedContrato] = useState<typeof initialContratosData[0] | null>(null);
+    const [selectedContrato, setSelectedContrato] = useState<typeof contratosData[0] | null>(null);
     const [dialogOpen, setDialogOpen] = useState(false);
     // form
     const [newFornecedor, setNewFornecedor] = useState("");
@@ -135,8 +60,7 @@ export default function Contratos() {
             toast({ title: "Campos obrigatórios", description: "Preencha Fornecedor e Serviço.", variant: "destructive" });
             return;
         }
-        const entry = {
-            id: Date.now(),
+        addContrato({
             fornecedor: newFornecedor,
             servico: newServico,
             tipo: newTipo || "Serviços",
@@ -146,12 +70,11 @@ export default function Contratos() {
             contatoNome: "—", contatoTelefone: "—", contatoEmail: "—",
             sla: newSla || "—",
             observacoes: newObs,
-        };
-        setContratosData(prev => [...prev, entry]);
+        });
         addLog({ user: "Admin", action: "Novo Contrato", details: `Contrato com ${newFornecedor} (${newServico}) cadastrado.`, module: "Contratos" });
         setNewFornecedor(""); setNewServico(""); setNewVencimento(""); setNewValor(""); setNewTipo(""); setNewSla(""); setNewObs("");
         setDialogOpen(false);
-        toast({ title: "Contrato salvo!", description: `'${entry.fornecedor}' adicionado com sucesso.` });
+        toast({ title: "Contrato salvo!", description: `'${newFornecedor}' adicionado com sucesso.` });
     };
 
     const filteredContratos = contratosData.filter((c) => {

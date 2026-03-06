@@ -1,11 +1,7 @@
 import {
   Monitor,
   Smartphone,
-  Shield,
   Globe,
-  Wifi,
-  WifiOff,
-  Server,
   AlertTriangle,
   FileWarning,
   CheckCircle2,
@@ -16,7 +12,7 @@ import {
   Activity,
   History,
   ShieldCheck,
-  BriefcaseBusiness,
+  Shield,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +22,7 @@ import { useAudit } from "@/components/AuditContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart, PieChart } from "@/components/InventoryCharts";
-import { format, parse, differenceInDays, isPast } from "date-fns";
+import { format, parse, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Dialog,
@@ -36,9 +32,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-import { computers, mobiles, softwares, emprestimos, contratosData, acessosData, ipList, setores } from "@/data/mockData";
+import { useData } from "@/components/DataContext";
+import { setores } from "@/data/mockData";
 
 const getDaysRemaining = (dateStr: string) => {
   if (!dateStr || dateStr === "—" || dateStr.includes("Automática") || dateStr === "Pagamento Anual") return null;
@@ -56,44 +53,7 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [isResolutionCenterOpen, setIsResolutionCenterOpen] = useState(false);
   const [snoozedAlerts, setSnoozedAlerts] = useState<string[]>([]);
-
-  // Real-time Service Status State
-  const [serviceStatus, setServiceStatus] = useState([
-    { id: 1, name: "Gateway Firewall", provider: "Fortinet Gateway", type: "gateway", ip: "10.0.0.1", status: "online", ping: 2 },
-    { id: 2, name: "Link Primário", provider: "Vivo Empresas 1Gbps", type: "link", ip: "1.1.1.1", status: "online", ping: 15 },
-    { id: 3, name: "Link Backup", provider: "Claro Fibra 600M", type: "link", ip: "8.8.8.8", status: "online", ping: 25 },
-    { id: 4, name: "Servidor de Dados", provider: "SRV-ERP-01", type: "server", ip: "192.168.1.10", status: "online", ping: 1 },
-    { id: 4, name: "Domain Controller", provider: "WKS-ADM-001", type: "server", ip: "192.168.1.20", status: "online", ping: 1 },
-  ]);
-
-  // Ping Simulation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setServiceStatus(prev => prev.map(service => {
-        let basePing = service.ping;
-        if (service.type === 'link') {
-          basePing = service.name.includes("Primário") ? 15 : 25;
-        } else if (service.type === 'gateway') {
-          basePing = 2;
-        } else {
-          basePing = 1;
-        }
-
-        const varPing = Math.floor(Math.random() * 8) - 3;
-        let newPing = basePing + varPing;
-        if (newPing < 1) newPing = 1;
-
-        if (Math.random() > 0.95 && service.type === 'link') {
-          newPing += Math.floor(Math.random() * 40);
-        }
-
-        return { ...service, ping: newPing };
-      }));
-    }, 2500);
-
-    return () => clearInterval(interval);
-  }, []);
-  // --- DYNAMIC KPIs CALCULATION ---
+  const { contratos: contratosData, acessos: acessosData, ipList, computers, mobiles, softwares, emprestimos } = useData();
   const activeComps = computers.filter(c => c.status === "Ativo").length;
   const maintComps = computers.filter(c => c.status === "Em Manutenção").length;
 
@@ -120,7 +80,7 @@ export default function Dashboard() {
     { label: "IPs em Uso", value: totalIps, icon: Globe, trend: "Monitorados no IPAM", route: "/rede?tab=ipam" },
   ];
 
-  // --- DYNAMIC STATUS CHECKS --- (Replaced by state)
+  // --- KPIs & ALERTS ---
 
   const alerts = [];
 
@@ -364,138 +324,42 @@ export default function Dashboard() {
         <PieChart title="Disponibilidade Global" data={assetsByStatus} />
       </div>
 
-      {/* Alerts & Critical Items */}
-      <Card className="shadow-sm border-l-4 border-l-destructive transition-all">
-        <CardHeader className="pb-3">
+
+
+      {/* Activity Feed (Audit Log) */}
+      <Card className="shadow-sm">
+        <CardHeader className="pb-3 border-b bg-muted/20">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-            Ações Necessárias
+            <Activity className="h-4 w-4 text-primary" />
+            Log de Atividades
           </CardTitle>
         </CardHeader>
-        <CardContent className="pb-4">
-          <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
-            <div className="space-y-4">
-              {activeAlerts.length > 0 ? (
-                activeAlerts.map((alert) => (
-                  <div key={alert.id} className={`flex gap-4 p-3 rounded-lg bg-accent/20 border transition-all ${alert.type === 'critical' ? 'border-destructive/20 bg-destructive/5' : 'border-accent/30'}`}>
-                    <div className={`mt-1 h-2 w-2 rounded-full ${alert.type === 'critical' ? 'bg-destructive animate-pulse' : 'bg-amber-500'}`} />
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <p className="text-sm font-medium">{alert.message}</p>
-                        <Badge variant="outline" className={`text-[9px] uppercase tracking-tighter ${alert.type === 'critical' ? 'text-destructive border-destructive/30' : ''}`}>{alert.module}</Badge>
-                      </div>
-                      <div className="flex items-center gap-4 mt-2">
-                        <Button
-                          variant="link"
-                          className={`p-0 h-auto text-xs font-bold group-hover:underline ${alert.type === 'critical' ? 'text-destructive' : 'text-primary'}`}
-                          onClick={() => {
-                            if (alert.module === 'Contratos') {
-                              navigate('/contratos');
-                            } else if (alert.id.startsWith('sw-')) {
-                              navigate('/inventario?tab=softwares');
-                            } else if (alert.id.startsWith('emp-')) {
-                              navigate('/inventario?tab=emprestimos');
-                            } else {
-                              navigate('/inventario');
-                            }
-                          }}
-                        >
-                          Resolver Agora
-                        </Button>
-                      </div>
+        <CardContent className="p-0">
+          <ScrollArea className="h-[350px]">
+            <div className="divide-y">
+              {logs.length > 0 ? (
+                logs.map((log) => (
+                  <div key={log.id} className="p-4 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold bg-accent px-2 py-0.5 rounded text-accent-foreground">
+                        {log.module}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">{log.timestamp}</span>
                     </div>
+                    <p className="text-sm font-medium">{log.action}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{log.details}</p>
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground opacity-40">
-                  <CheckCircle2 className="h-10 w-10 mb-2" />
-                  <p className="text-sm">Parabéns! Nenhuma pendência crítica.</p>
+                <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                  <History className="h-8 w-8 mb-2 opacity-20" />
+                  <p className="text-sm">Nenhuma atividade registrada hoje.</p>
                 </div>
               )}
             </div>
-          </div>
+          </ScrollArea>
         </CardContent>
       </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Status Check */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Server className="h-4 w-4 text-muted-foreground" />
-              Status dos Serviços
-            </CardTitle>
-            <span className="flex h-2 w-2 rounded-full bg-success animate-ping" title="Monitoramento Ativo" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {serviceStatus.map((service, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between rounded-lg border p-3 transition-opacity"
-              >
-                <div className="flex items-center gap-3">
-                  {service.type === "link" ? (
-                    <Globe className="h-4 w-4 text-muted-foreground" />
-                  ) : service.type === "gateway" ? (
-                    <Shield className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Server className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium leading-none">{service.name}</p>
-                      <span className="text-[10px] text-muted-foreground font-mono">{service.ip}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">{service.provider}</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-medium">{service.ping}ms</span>
-                    <div className={`h-2 w-2 rounded-full ${service.status === 'online' ? 'bg-success' : 'bg-destructive'}`} />
-                  </div>
-                  <span className="text-[10px] uppercase font-bold text-success/80">Online</span>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Activity Feed (Audit Log) */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 border-b bg-muted/20">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Activity className="h-4 w-4 text-primary" />
-              Log de Atividades
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[350px]">
-              <div className="divide-y">
-                {logs.length > 0 ? (
-                  logs.map((log) => (
-                    <div key={log.id} className="p-4 hover:bg-muted/30 transition-colors">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold bg-accent px-2 py-0.5 rounded text-accent-foreground">
-                          {log.module}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">{log.timestamp}</span>
-                      </div>
-                      <p className="text-sm font-medium">{log.action}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{log.details}</p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                    <History className="h-8 w-8 mb-2 opacity-20" />
-                    <p className="text-sm">Nenhuma atividade registrada hoje.</p>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
