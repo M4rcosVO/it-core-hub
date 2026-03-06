@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Monitor,
   Smartphone,
@@ -139,7 +139,7 @@ export default function Inventario() {
     const formatDate = (iso: string) => {
       if (!iso) return "—";
       const [y, m, d] = iso.split("-");
-      return `${d}/${m}/${y}`;
+      return `${d} /${m}/${y} `;
     };
     const newComp = {
       id: Date.now(),
@@ -152,14 +152,14 @@ export default function Inventario() {
       responsavel: novoResponsavel || "—",
       setor: novoSetor || "Estoque",
       status: "Ativo",
-      patrimonio: `TI-${Date.now().toString().slice(-5)}`,
+      patrimonio: `TI - ${Date.now().toString().slice(-5)} `,
       garantiaVencimento: formatDate(novoGarantia),
       dataCompra: formatDate(novoDataCompra),
       termoAssinado: false,
       historico: [{ evento: "Cadastro", data: new Date().toLocaleDateString("pt-BR"), usuario: "Administrador" }],
     };
     setLocalComputers(prev => [newComp, ...prev]);
-    addLog({ user: "Administrador", action: "Ativo Cadastrado", details: `Novo ativo '${novoIdentificador}' (${novoTipo}) adicionado ao inventário.`, module: 'Inventário' });
+    addLog({ user: "Administrador", action: "Ativo Cadastrado", details: `Novo ativo '${novoIdentificador}'(${novoTipo}) adicionado ao inventário.`, module: 'Inventário' });
     toast({ title: "Ativo salvo!", description: `'${novoIdentificador}' adicionado ao inventário.` });
     setNovoAtivoOpen(false);
     setNovoTipo(""); setNovoIdentificador(""); setNovoResponsavel(""); setNovoSetor(""); setNovoDataCompra(""); setNovoGarantia("");
@@ -175,7 +175,7 @@ export default function Inventario() {
       if (found) {
         setSelectedAuditAsset(found);
         toast({ title: "Ativo Encontrado", description: `Patrimônio ${(found as any).patrimonio} localizado.` });
-        addLog({ user: "Usuário Logado", action: "Auditoria QR", details: `Buscou ativo por ID: ${auditSearchId}`, module: 'Inventário' });
+        addLog({ user: "Usuário Logado", action: "Auditoria QR", details: `Buscou ativo por ID: ${auditSearchId} `, module: 'Inventário' });
       } else {
         toast({ title: "Não encontrado", description: `Nenhum ativo com patrimônio "${auditSearchId}" foi localizado.`, variant: "destructive" });
       }
@@ -217,26 +217,26 @@ export default function Inventario() {
     window.print();
   };
 
-  const filteredComputers = localComputers.filter((c) => {
+  const filteredComputers = useMemo(() => localComputers.filter((c) => {
     const matchSearch = search === "" || Object.values(c).some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
     const matchSetor = setorFilter === "Todos" || c.setor === setorFilter;
     return matchSearch && matchSetor;
-  });
+  }), [localComputers, search, setorFilter]);
 
-  const filteredMobiles = mobiles.filter((m) => {
+  const filteredMobiles = useMemo(() => mobiles.filter((m) => {
     const matchSearch = search === "" || Object.values(m).some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
     return matchSearch;
-  });
+  }), [mobiles, search]);
 
-  const filteredPeripherals = peripherals.filter((p) => {
+  const filteredPeripherals = useMemo(() => peripherals.filter((p) => {
     const matchSearch = search === "" || Object.values(p).some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
     const matchSetor = setorFilter === "Todos" || p.setor === setorFilter;
     return matchSearch && matchSetor;
-  });
+  }), [peripherals, search, setorFilter]);
 
-  const filteredSoftwares = softwares.filter((s) => {
+  const filteredSoftwares = useMemo(() => softwares.filter((s) => {
     return search === "" || Object.values(s).some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
-  });
+  }), [softwares, search]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const openDetail = (asset: any, type: "computer" | "mobile" | "peripheral" | "software") => {

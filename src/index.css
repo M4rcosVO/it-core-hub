@@ -149,3 +149,42 @@
     }
   }
 }
+
+/* Print optimizations (O4) */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 1cm;
+  }
+
+  /* Hide sidebar, header, and non-printable elements */
+  nav,
+  header,
+  aside,
+  .animate-fade-in>div:first-child,
+  button,
+  .tabs-list-container {
+    display: none !important;
+  }
+
+  /* Reset app layout containers to full width */
+  body,
+  main,
+  .animate-fade-in {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Optimize table appearance for print */
+  .shadow-sm {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  table {
+    width: 100% !important;
+    font-size: 10pt !important;
+  }
+}
