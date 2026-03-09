@@ -27,7 +27,7 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useData } from "@/components/DataContext";
-import { computers, mobiles } from "@/data/mockData";
+import { computers, mobiles, agendamentosRotinas } from "@/data/mockData";
 
 // ─────────────────────────────────────────────
 // Event helpers
@@ -105,6 +105,22 @@ export default function Calendario() {
                 icon: ShieldAlert,
                 color: typeStyles.hardware,
                 details: `Vencimento da garantia do ativo.`,
+            });
+        });
+
+        // Scheduled Routines/Maintenances
+        agendamentosRotinas.forEach((r) => {
+            const d = parseDate(r.data);
+            if (!d) return;
+            const isDone = r.status === "Concluído";
+            evts.push({
+                id: `maint-${r.id}`,
+                date: d,
+                title: `${isDone ? "[✓] " : ""}${r.titulo}`,
+                type: "maintenance",
+                icon: Wrench,
+                color: isDone ? "text-success bg-success/10 border-success/20 stroke-success border" : typeStyles.maintenance,
+                details: `Resp: ${r.responsavel} — Status: ${r.status}`,
             });
         });
 

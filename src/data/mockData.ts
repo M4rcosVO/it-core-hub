@@ -40,7 +40,14 @@ export const emprestimos = [
 export const peripherals = [
     { id: 1, tipo: "Impressora", modelo: "HP LaserJet M404dn", serial: "CNB4G12345", setor: "Administrativo", status: "Ativo", ip: "192.168.1.50", patrimonio: "TI-PER-001", historico: [{ evento: "Instalação", data: "05/01/2025", usuario: "Rafael Lima" }] },
     { id: 2, tipo: "Scanner", modelo: "Fujitsu ScanSnap iX1600", serial: "SCN2024001", setor: "Financeiro", status: "Ativo", ip: "192.168.1.55", patrimonio: "TI-PER-002", historico: [{ evento: "Instalação", data: "12/03/2024", usuario: "Admin TI" }] },
-    { id: 3, tipo: "Switch", modelo: "Cisco Catalyst 9300", serial: "FHH2412345", setor: "Datacenter", status: "Ativo", ip: "10.0.10.2", patrimonio: "TI-PER-003", historico: [{ evento: "Instalação no Rack 01", data: "20/06/2024", usuario: "Rafael Lima" }] },
+];
+
+// Infraestrutura Física
+export const infraestrutura = [
+    { id: 1, tipo: "Switch Core", modelo: "Cisco Catalyst 9300", ip: "10.0.10.2", local: "Rack 01 - Datacenter", status: "Ativo", patrimonio: "TI-SW-001", garantiaVencimento: "20/06/2027", dataCompra: "20/06/2024", historico: [{ evento: "Instalação", data: "20/06/2024", usuario: "Rafael Lima" }] },
+    { id: 2, tipo: "Switch Access", modelo: "Aruba 2930F 24G", ip: "10.0.10.3", local: "Rack 02 - ADM", status: "Ativo", patrimonio: "TI-SW-002", garantiaVencimento: "15/01/2026", dataCompra: "15/01/2023", historico: [{ evento: "Instalação", data: "15/01/2023", usuario: "Admin TI" }] },
+    { id: 3, tipo: "Firewall", modelo: "Fortinet FortiGate 60F", ip: "10.0.0.1", local: "Rack 01 - Datacenter", status: "Ativo", patrimonio: "TI-FW-001", garantiaVencimento: "10/10/2025", dataCompra: "10/10/2022", historico: [{ evento: "Atualização Firmware", data: "05/02/2025", usuario: "Admin TI" }] },
+    { id: 4, tipo: "Access Point", modelo: "Ubiquiti UniFi U6-LR", ip: "192.168.1.100", local: "Teto Recepção", status: "Ativo", patrimonio: "TI-AP-001", garantiaVencimento: "01/04/2025", dataCompra: "01/04/2024", historico: [{ evento: "Instalação", data: "01/04/2024", usuario: "Rafael Lima" }] },
 ];
 
 // Cofre de Acessos
@@ -71,4 +78,66 @@ export const contratosData = [
     { id: 3, fornecedor: "Simpress", servico: "Outsourcing de Impressão (3 Maq.)", tipo: "Equipamentos", vencimento: "10/01/2025", valorMensal: "R$ 850,00", status: "Ativo", contatoNome: "Técnico Regional", contatoTelefone: "(11) 4004-9999", contatoEmail: "suporte@simpress.com.br", sla: "NBD (Next Business Day) para peças", observacoes: "Inclui franquia de 10.000 cópias P&B mês." },
     { id: 4, fornecedor: "Locaweb", servico: "Hospedagem Site + E-mail", tipo: "Software/Cloud", vencimento: "05/08/2025", valorMensal: "R$ 120,00", status: "Ativo", contatoNome: "Painel Locaweb", contatoTelefone: "(11) 3544-0444", contatoEmail: "—", sla: "99.8% uptime", observacoes: "Renovação automática no cartão corporativo." },
     { id: 5, fornecedor: "Dell Computadores", servico: "Garantia ProSupport Servers", tipo: "Equipamentos", vencimento: "20/11/2024", valorMensal: "Pagamento Anual", status: "Crítico", contatoNome: "Dell ProSupport", contatoTelefone: "0800 970 3355", contatoEmail: "—", sla: "Atendimento on-site 4h", observacoes: "Urgente: Renovar para manter cobertura do SRV-ERP-01." },
+];
+
+// Agendamento de Rotinas/Manutenções
+export const agendamentosRotinas = [
+    { id: 1, rotinaId: 3, titulo: "Manutenção Preventiva SRV-ERP-01", data: "15/03/2026", responsavel: "Rafael Lima", status: "Agendado" },
+    { id: 2, rotinaId: null, titulo: "Auditoria de Acessos Trimestral", data: "20/03/2026", responsavel: "Carlos Silva", status: "Agendado" },
+    { id: 3, rotinaId: null, titulo: "Limpeza Física do Datacenter", data: "05/03/2026", responsavel: "Equipe TI", status: "Concluído" },
+    { id: 4, rotinaId: null, titulo: "Renovação Certificados Digitais", data: "28/03/2026", responsavel: "Rafael Lima", status: "Agendado" },
+];
+
+// Kanban - Demandas & Projetos Internos
+export type Demanda = {
+    id: number;
+    titulo: string;
+    descricao: string;
+    prioridade: "Baixa" | "Média" | "Alta" | "Crítica";
+    solicitante: string;
+    responsavel: string;
+    status: "BACKLOG" | "DOING" | "REVIEW" | "DONE";
+    previsao: string;
+};
+
+export const demandasData: Demanda[] = [
+    { id: 1, titulo: "Migração do Servidor de Arquivos para Nuvem", descricao: "Mover todos os compartilhamentos do SRV-FILE-01 para o SharePoint corporativo.", prioridade: "Alta", solicitante: "Diretoria", responsavel: "Carlos Silva", status: "DOING", previsao: "15/05/2026" },
+    { id: 2, titulo: "Atualização de Firmware Firewalls Regionais", descricao: "Aplicar patch de segurança crítico CVE-2026-X na borda.", prioridade: "Crítica", solicitante: "Segurança da Informação", responsavel: "Rafael Lima", status: "BACKLOG", previsao: "20/03/2026" },
+    { id: 3, titulo: "Cotar novos Monitores Ultrawide", descricao: "Levantamento de preços para substituição de monitores do time de Design.", prioridade: "Baixa", solicitante: "RH", responsavel: "Equipe TI", status: "REVIEW", previsao: "30/03/2026" },
+    { id: 4, titulo: "Reestruturação de Cabos do Rack 02", descricao: "Organizar cabeamento estruturado que ficou confuso após a reforma.", prioridade: "Média", solicitante: "TI", responsavel: "João Almeida", status: "DOING", previsao: "10/04/2026" },
+    { id: 5, titulo: "Implantação do IT Core Hub", descricao: "Lançamento da nova central unificada de gestão de TI da Gellak.", prioridade: "Alta", solicitante: "TI", responsavel: "Admin TI", status: "DONE", previsao: "06/03/2026" },
+];
+
+// FinOps - Dados para Gráficos
+export const finopsMonthlyData = [
+    { name: "Jan", capex: 12500, opex: 8400 },
+    { name: "Fev", capex: 3200, opex: 8400 },
+    { name: "Mar", capex: 5400, opex: 8900 },
+    { name: "Abr", capex: 2100, opex: 9200 },
+    { name: "Mai", capex: 4000, opex: 9200 },
+    { name: "Jun", capex: 10500, opex: 9500 },
+];
+
+export const finopsCategoryData = [
+    { name: "Licenciamento & Cloud", value: 45 },
+    { name: "Conectividade (Links)", value: 25 },
+    { name: "Outsourcing Impressão", value: 15 },
+    { name: "Garantias & Suporte", value: 15 },
+];
+
+// Status Page - Incidentes e Outages
+export type Incidente = {
+    id: number;
+    servico: string;
+    titulo: string;
+    data: string;
+    duracao: string; // Ex: "45 min"
+    causaRaiz: string;
+    resolucao: string;
+};
+
+export const incidentesData: Incidente[] = [
+    { id: 1, servico: "Internet Matriz (Link A)", titulo: "Queda na operadora", data: "05/03/2026", duracao: "1h 15m", causaRaiz: "Rompimento de fibra ótica na região central.", resolucao: "Failover automático para Link B. Reparo concluído pela operadora." },
+    { id: 2, servico: "Sistema ERP", titulo: "Lentidão sistêmica", data: "28/02/2026", duracao: "40 min", causaRaiz: "Lock no banco de dados após query pesada do time Contábil.", resolucao: "Query otimizada (indexação) e kill na sessão travada." },
+    { id: 3, servico: "Telefonia IP", titulo: "Falha de registro SIP", data: "15/02/2026", duracao: "2h", causaRaiz: "Atualização de segurança bloqueou porta 5060 no Firewall.", resolucao: "Rollback da regra e liberação da porta UDP para o PABX Cloud." },
 ];

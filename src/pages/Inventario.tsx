@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   Trash2,
   Share2,
+  Server,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -71,7 +72,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import QRCode from "react-qr-code";
-import { computers, mobiles, peripherals, softwares, emprestimos, setores } from "@/data/mockData";
+import { computers, mobiles, peripherals, softwares, emprestimos, setores, infraestrutura } from "@/data/mockData";
 import { useAuth } from "@/components/AuthContext";
 import { useAudit } from "@/components/AuditContext";
 import { TableSkeleton } from "@/components/LoadingSkeletons";
@@ -93,7 +94,7 @@ export default function Inventario() {
   const [setorFilter, setSetorFilter] = useState("Todos");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
-  const [assetType, setAssetType] = useState<"computer" | "mobile" | "peripheral" | "software" | null>(null);
+  const [assetType, setAssetType] = useState<"computer" | "mobile" | "peripheral" | "software" | "infra" | null>(null);
   const [selectedForPrint, setSelectedForPrint] = useState<number[]>([]);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -238,8 +239,12 @@ export default function Inventario() {
     return search === "" || Object.values(s).some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
   }), [softwares, search]);
 
+  const filteredInfra = useMemo(() => infraestrutura.filter((i) => {
+    return search === "" || Object.values(i).some((v) => String(v).toLowerCase().includes(search.toLowerCase()));
+  }), [search]);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const openDetail = (asset: any, type: "computer" | "mobile" | "peripheral" | "software") => {
+  const openDetail = (asset: any, type: "computer" | "mobile" | "peripheral" | "software" | "infra") => {
     setSelectedAsset(asset);
     setAssetType(type);
   };
@@ -265,8 +270,11 @@ export default function Inventario() {
     } else if (activeTab === "softwares") {
       dataToExport = filteredSoftwares as unknown as Record<string, unknown>[];
       filename = "IT_Inventario_Softwares";
+    } else if (activeTab === "infra") {
+      dataToExport = filteredInfra as unknown as Record<string, unknown>[];
+      filename = "IT_Inventario_Infraestrutura";
     } else {
-      toast({ title: "Aba sem exportação", description: "Selecione a aba de Computadores, Móveis, Periféricos ou Softwares para exportar." });
+      toast({ title: "Aba sem exportação", description: "Selecione uma aba válida para exportar." });
       return;
     }
 
@@ -412,7 +420,8 @@ export default function Inventario() {
                       <SelectContent>
                         <SelectItem value="computer">Computador / Notebook</SelectItem>
                         <SelectItem value="mobile">Smartphone / Tablet</SelectItem>
-                        <SelectItem value="peripheral">Periférico (Monitor, Impressora)</SelectItem>
+                        <SelectItem value="peripheral">Periférico</SelectItem>
+                        <SelectItem value="infra">Equipamento de Rede (Infra)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -588,6 +597,10 @@ export default function Inventario() {
           <TabsTrigger value="softwares" className="gap-2">
             <AppWindow className="h-4 w-4" />
             Softwares
+          </TabsTrigger>
+          <TabsTrigger value="infra" className="gap-2">
+            <Server className="h-4 w-4" />
+            Infraestrutura
           </TabsTrigger>
           <TabsTrigger value="emprestimos" className="gap-2">
             <BriefcaseBusiness className="h-4 w-4" />
@@ -767,6 +780,48 @@ export default function Inventario() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="infra" className="mt-4">
+          <Card className="shadow-sm">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="w-[40px] p-3 text-center">
+                        <PrintIcon className="h-3 w-3 inline" />
+                      </th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Tipo</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Modelo</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Local/Rack</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">IP</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Patrimônio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInfra.map((i) => (
+                      <tr key={i.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => openDetail(i, "infra")}>
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={() => togglePrintSelection(i.id)}
+                            className={`p-1 rounded border transition-colors ${selectedForPrint.includes(i.id) ? 'bg-primary border-primary text-primary-foreground' : 'text-muted-foreground border-border hover:border-primary'}`}
+                          >
+                            {selectedForPrint.includes(i.id) ? <CheckSquare className="h-3 w-3" /> : <Square className="h-3 w-3" />}
+                          </button>
+                        </td>
+                        <td className="p-3 font-medium">{i.tipo}</td>
+                        <td className="p-3 disabled:hidden md:table-cell">{i.modelo}</td>
+                        <td className="p-3">{i.local}</td>
+                        <td className="p-3 font-mono text-xs">{i.ip}</td>
+                        <td className="p-3 font-mono text-xs">{i.patrimonio}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="emprestimos" className="mt-4">
           <Card className="shadow-sm">
             <CardContent className="p-0">
@@ -860,6 +915,7 @@ export default function Inventario() {
                 {assetType === "mobile" && selectedAsset?.modelo}
                 {assetType === "peripheral" && selectedAsset?.modelo}
                 {assetType === "software" && selectedAsset?.nome}
+                {assetType === "infra" && `${selectedAsset?.tipo} - ${selectedAsset?.modelo}`}
               </SheetTitle>
               {selectedAsset?.status && (
                 <Badge variant={selectedAsset.status === "Ativo" ? "default" : selectedAsset.status === "Em Manutenção" ? "secondary" : "destructive"}
