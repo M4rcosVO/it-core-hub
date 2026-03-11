@@ -17,7 +17,13 @@ import {
   BarChart,
   Kanban,
   DollarSign,
-  Activity
+  Activity,
+  UserPlus,
+  ShoppingCart,
+  Laptop,
+  ShieldCheck,
+  MonitorPlay,
+  Headset
 } from "lucide-react";
 import { format, parse, differenceInDays } from "date-fns";
 import { NavLink } from "@/components/NavLink";
@@ -51,19 +57,26 @@ const menuGroups = [
     label: "VISÃO GERAL",
     items: [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
+      { title: "Status dos Serviços", url: "/status", icon: Activity },
+      { title: "Painel NOC (TV)", url: "/noc", icon: MonitorPlay },
     ]
   },
   {
     label: "RECURSOS E ATIVOS",
     items: [
-      { title: "Inventário", url: "/inventario", icon: Monitor },
-      { title: "Rede & Infra", url: "/rede", icon: Network },
-      { title: "Acessos", url: "/acessos", icon: Key },
+      { title: "Inventário & Licenças", url: "/inventario", icon: Laptop },
+      { title: "CMDB Visual (Grafo)", url: "/cmdb", icon: Network },
+      { title: "Gestão de Acessos", url: "/acessos", icon: ShieldCheck },
+      { title: "Rede & Infra", url: "/rede", icon: Network }, // Kept original Rede & Infra
     ]
   },
   {
     label: "GESTÃO E PROCESSOS",
     items: [
+      { title: "Service Desk (Portal)", url: "/portal", icon: Headset },
+      { title: "FinOps & Orçamento", url: "/finops", icon: DollarSign },
+      { title: "Onboarding (RH)", url: "/onboarding", icon: UserPlus },
+      { title: "Compras & Cotações", url: "/compras", icon: ShoppingCart },
       { title: "Demandas", url: "/demandas", icon: Kanban },
       { title: "Contratos", url: "/contratos", icon: FileSignature },
       { title: "Rotinas", url: "/rotinas", icon: CheckSquare },

@@ -11,9 +11,17 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const rolePermissions: Record<Role, string[]> = {
-    "Administrador": ["Dashboard", "Inventário", "Rede & Infra", "Contratos", "Wiki", "Acessos", "Configurações", "Rotinas", "Calendário"],
-    "Técnico N1": ["Dashboard", "Inventário", "Rede & Infra", "Wiki", "Rotinas", "Calendário"],
-    "Auditor": ["Dashboard", "Auditoria", "Inventário", "Wiki", "Calendário"]
+    "Administrador": [
+        "Dashboard", "Inventário & Licenças", "Rede & Infra", "Contratos", "Wiki", "Gestão de Acessos",
+        "Configurações", "Rotinas", "Calendário", "Relatórios & BI", "Demandas",
+        "FinOps & Orçamento", "Status dos Serviços", "Onboarding (RH)",
+        "Compras & Cotações", "CMDB Visual (Grafo)", "Painel NOC (TV)", "Service Desk (Portal)"
+    ],
+    "Técnico N1": [
+        "Dashboard", "Inventário & Licenças", "Rede & Infra", "Wiki", "Rotinas", "Calendário",
+        "Demandas", "Status dos Serviços", "CMDB Visual (Grafo)", "Painel NOC (TV)", "Service Desk (Portal)"
+    ],
+    "Auditor": ["Dashboard", "Auditoria", "Inventário & Licenças", "Wiki", "Calendário", "Relatórios & BI", "Service Desk (Portal)"]
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {

@@ -13,6 +13,7 @@ import { useState, useMemo } from "react";
 import { softwares, emprestimos, contratosData } from "@/data/mockData";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { usePrivacy } from "@/components/PrivacyContext";
+import { GlobalChat } from "@/components/GlobalChat";
 
 export function AppLayout() {
   const { isPrivacyMode, togglePrivacyMode } = usePrivacy();
@@ -94,6 +95,8 @@ export function AppLayout() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+
+              <GlobalChat />
 
               <Popover>
                 <PopoverTrigger asChild>

@@ -17,6 +17,11 @@ const Relatorios = lazy(() => import("@/pages/Relatorios"));
 const Demandas = lazy(() => import("@/pages/Demandas"));
 const FinOps = lazy(() => import("@/pages/FinOps"));
 const Status = lazy(() => import("@/pages/Status"));
+const Onboarding = lazy(() => import("@/pages/Onboarding"));
+const Compras = lazy(() => import("@/pages/Compras"));
+const Noc = lazy(() => import("@/pages/Noc"));
+const Cmdb = lazy(() => import("@/pages/Cmdb"));
+const ServiceDesk = lazy(() => import("@/pages/ServiceDesk"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Fallback spinner while loading chunks
@@ -44,8 +49,14 @@ const App = () => (
             <Route path="/demandas" element={<Demandas />} />
             <Route path="/finops" element={<FinOps />} />
             <Route path="/status" element={<Status />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/compras" element={<Compras />} />
+            <Route path="/cmdb" element={<Cmdb />} />
+            <Route path="/portal" element={<ServiceDesk />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
           </Route>
+          {/* NOC route outside AppLayout to remove sidebar & topbar entirely */}
+          <Route path="/noc" element={<Noc />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
