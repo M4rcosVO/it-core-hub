@@ -1,0 +1,167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  password  String
+  role      String   @default("viewer") // "admin", "editor", "viewer"
+  createdAt DateTime @default(now())
+}
+
+model Computer {
+  id                 Int      @id @default(autoincrement())
+  hostname           String   @unique
+  modelo            String
+  processador       String
+  ram               String
+  armazenamento     String
+  so                String
+  responsavel       String
+  setor             String
+  status            String
+  patrimonio        String   @unique
+  garantiaVencimento String?
+  dataCompra        String?
+  termoAssinado     Boolean  @default(false)
+  historico         Json?     // Stores event logs
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Mobile {
+  id          Int      @id @default(autoincrement())
+  modelo      String
+  imei        String   @unique
+  chip        String?
+  responsavel String
+  status      String
+  patrimonio  String   @unique
+  historico   Json?
+  createdAt   DateTime @default(now())
+}
+
+model Software {
+  id          Int      @id @default(autoincrement())
+  nome        String
+  fabricante  String
+  licenca     String
+  qtd         Int
+  assigned    Int
+  vencimento  String
+  createdAt   DateTime @default(now())
+}
+
+model Emprestimo {
+  id                Int      @id @default(autoincrement())
+  equipamento       String
+  solicitante       String
+  dataRetirada      String
+  previsaoDevolucao String
+  status            String
+  motivo            String?
+  createdAt         DateTime @default(now())
+}
+
+model Peripheral {
+  id         Int      @id @default(autoincrement())
+  tipo       String
+  modelo     String
+  serial     String   @unique
+  setor      String
+  status     String
+  ip         String?
+  patrimonio String   @unique
+  historico  Json?
+  createdAt  DateTime @default(now())
+}
+
+model Infraestrutura {
+  id                 Int      @id @default(autoincrement())
+  tipo               String
+  modelo             String
+  ip                 String?
+  local              String
+  status             String
+  patrimonio         String   @unique
+  garantiaVencimento String?
+  dataCompra         String?
+  historico          Json?
+  createdAt          DateTime @default(now())
+}
+
+model Acesso {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  url       String?
+  usuario   String
+  senha     String
+  categoria String
+  setor     String
+  createdAt DateTime @default(now())
+}
+
+model IpReservado {
+  id          Int      @id @default(autoincrement())
+  ip          String   @unique
+  dispositivo String
+  setor       String
+  createdAt   DateTime @default(now())
+}
+
+model Contrato {
+  id              Int      @id @default(autoincrement())
+  fornecedor      String
+  servico         String
+  tipo            String
+  vencimento      String
+  valorMensal     String
+  status          String
+  contatoNome     String?
+  contatoTelefone String?
+  contatoEmail    String?
+  sla             String?
+  observacoes     String?
+  createdAt       DateTime @default(now())
+}
+
+model AgendamentoRotina {
+  id          Int      @id @default(autoincrement())
+  rotinaId    Int?
+  titulo      String
+  data        String
+  responsavel String
+  status      String
+  createdAt   DateTime @default(now())
+}
+
+model Demanda {
+  id          Int      @id @default(autoincrement())
+  titulo      String
+  descricao   String
+  prioridade  String
+  solicitante String
+  responsavel String
+  status      String   @default("BACKLOG")
+  previsao    String?
+  createdAt   DateTime @default(now())
+}
+
+model Incidente {
+  id         Int      @id @default(autoincrement())
+  servico    String
+  titulo     String
+  data       String
+  duracao    String
+  causaRaiz  String
+  resolucao  String
+  createdAt  DateTime @default(now())
+}
