@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTheme } from "@/components/ThemeContext";
 import { useAudit } from "@/components/AuditContext";
+import { useToast } from "@/hooks/use-toast";
 
 const teamMembers = [
   { id: 1, nome: "Lucas Ferreira", email: "lucas.f@gellak.com", cargo: "Coordenador de TI", status: "Ativo" },
@@ -61,6 +62,7 @@ export default function Configuracoes() {
   const [moduleFilter, setModuleFilter] = useState("Todos");
   const { theme, toggleTheme } = useTheme();
   const { logs: auditLogs, clearLogs } = useAudit();
+  const { toast } = useToast();
 
   const filteredLogs = auditLogs.filter((log) => {
     const matchesSearch = searchLog === "" ||
@@ -119,7 +121,7 @@ export default function Configuracoes() {
 
         <TabsContent value="equipe" className="mt-4 space-y-4">
           <div className="flex justify-end">
-            <Button className="gap-2"><Plus className="h-4 w-4" />Adicionar Membro</Button>
+            <Button className="gap-2" onClick={() => toast({ title: "Convite Enviado", description: "O novo membro receberá um e-mail de acesso." })}><Plus className="h-4 w-4" />Adicionar Membro</Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {teamMembers.map((member) => (
@@ -154,7 +156,7 @@ export default function Configuracoes() {
         <TabsContent value="perfis" className="mt-4 space-y-4">
           <div className="flex justify-between items-center">
             <p className="text-xs text-muted-foreground">Configure o que cada perfil pode ver ou editar no IT Core Hub.</p>
-            <Button className="gap-2" size="sm" variant="outline"><Plus className="h-3.5 w-3.5" />Novo Perfil</Button>
+            <Button className="gap-2" size="sm" variant="outline" onClick={() => toast({ title: "Controle de Acesso", description: "Editor de perfis em desenvolvimento." })}><Plus className="h-3.5 w-3.5" />Novo Perfil</Button>
           </div>
           <div className="space-y-4">
             {accessProfiles.map((role) => (
@@ -176,7 +178,7 @@ export default function Configuracoes() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 md:border-l md:pl-4">
-                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground hover:text-primary">
+                    <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground hover:text-primary" onClick={() => toast({ title: "Configuração de Perfil", description: `Editando permissões para ${role.nome}...` })}>
                       <Settings2 className="h-3.5 w-3.5" /> Configurar
                     </Button>
                     <ChevronRight className="h-4 w-4 text-muted-foreground/30" />

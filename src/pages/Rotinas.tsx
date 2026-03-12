@@ -527,7 +527,7 @@ export default function Rotinas() {
                                             {selectedRoutine.tasks.filter(t => t.status === "pending").map(task => (
                                                 <Card key={task.id} className="p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-muted-foreground" onClick={() => updateTaskStatus(selectedRoutine.id, task.id, "doing")}>
                                                     <p className="text-sm font-medium leading-tight">{task.label}</p>
-                                                    <Button variant="ghost" size="sm" className="w-full mt-2 h-7 text-[10px] text-primary">Começar →</Button>
+                                                    <Button variant="ghost" size="sm" className="w-full mt-2 h-7 text-[10px] text-primary" onClick={(e) => { e.stopPropagation(); updateTaskStatus(selectedRoutine.id, task.id, "doing"); }}>Começar →</Button>
                                                 </Card>
                                             ))}
                                         </div>

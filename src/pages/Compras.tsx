@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAudit } from "@/components/AuditContext";
+import { useToast } from "@/hooks/use-toast";
 
 type SolicitacaoCompra = {
     id: number;
@@ -39,6 +40,7 @@ export default function Compras() {
     const [solicitacoes, setSolicitacoes] = useState<SolicitacaoCompra[]>(solicitacoesData);
     const [search, setSearch] = useState("");
     const { addLog } = useAudit();
+    const { toast } = useToast();
 
     const filtered = solicitacoes.filter(s =>
         search === "" ||
@@ -76,7 +78,7 @@ export default function Compras() {
                             className="pl-9 h-9 w-full"
                         />
                     </div>
-                    <Button className="gap-2 shrink-0 h-9">
+                    <Button className="gap-2 shrink-0 h-9" onClick={() => toast({ title: "Nova Solicitação de Compra", description: "Formulário de requisição (Wizard) disponível em breve." })}>
                         <Plus className="h-4 w-4" /> Nova Solicitação
                     </Button>
                 </div>
@@ -128,7 +130,7 @@ export default function Compras() {
                                     </p>
                                     <p className="text-xs font-bold">{sol.valorEstimado}</p>
                                 </div>
-                                <Button variant="secondary" size="sm" className="h-8 gap-2">
+                                <Button variant="secondary" size="sm" className="h-8 gap-2" onClick={() => toast({ title: "Fluxo de Aprovação", description: "Visualizador de Workflow e Tracker do Pedido." })}>
                                     {sol.status === "Nova" ? "Iniciar Cotação" :
                                         sol.status === "Cotação" ? `${sol.fornecedores} Cotações` :
                                             "Ver Detalhes"} <ArrowRight className="h-3.5 w-3.5" />

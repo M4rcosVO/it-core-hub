@@ -333,7 +333,7 @@ export default function Contratos() {
 
                             <div className="flex justify-end gap-2 pt-2 border-t">
                                 <Button variant="outline" onClick={() => setSelectedContrato(null)}>Fechar</Button>
-                                <Button className="gap-2">
+                                <Button className="gap-2" onClick={() => toast({ title: "Visualizador Seguro", description: "Descriptografando o contrato e preparando para exibição." })}>
                                     <ExternalLink className="h-4 w-4" />
                                     Ver Arquivo (PDF)
                                 </Button>

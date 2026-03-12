@@ -15,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useData } from "@/components/DataContext";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 import {
     AreaChart,
     Area,
@@ -31,6 +33,8 @@ import { finopsMonthlyData, finopsCategoryData } from "@/data/mockData";
 
 export default function FinOps() {
     const { contratos } = useData();
+    const navigate = useNavigate();
+    const { toast } = useToast();
 
     // Summing OPEX safely from mock strings "R$ 1.250,00"
     const currentOpex = useMemo(() => {
@@ -54,7 +58,7 @@ export default function FinOps() {
                     </h1>
                     <p className="text-muted-foreground text-sm mt-1">Gestão financeira, controle de OPEX/CAPEX e otimização de custos de TI.</p>
                 </div>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" onClick={() => toast({ title: "Exportação Iniciada", description: "O Relatório Financeiro (PDF) está sendo gerado." })}>
                     <Download className="h-4 w-4" /> Exportar Relatório Financeiro
                 </Button>
             </div>
@@ -191,7 +195,7 @@ export default function FinOps() {
                         <div>
                             <h4 className="font-bold text-sm text-warning-foreground">Licenças Ociosas (Microsoft 365)</h4>
                             <p className="text-xs text-muted-foreground mt-1">Identificamos 3 licenças 'Microsoft 365 Business' não atribuídas há mais de 30 dias.</p>
-                            <Button variant="outline" size="sm" className="mt-3 text-xs border-warning text-warning hover:bg-warning/10">Revisar Licenças</Button>
+                            <Button variant="outline" size="sm" className="mt-3 text-xs border-warning text-warning hover:bg-warning/10" onClick={() => navigate("/inventario?tab=softwares")}>Revisar Licenças</Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -203,7 +207,7 @@ export default function FinOps() {
                         <div>
                             <h4 className="font-bold text-sm">Renovação de Garantia SRV-ERP-01</h4>
                             <p className="text-xs text-muted-foreground mt-1">A garantia de servidor expira no próximo mês. Recomendada avaliação de extensão ProSupport (Est. R$ 2.400/ano).</p>
-                            <Button variant="outline" size="sm" className="mt-3 text-xs">Acessar Inventário</Button>
+                            <Button variant="outline" size="sm" className="mt-3 text-xs" onClick={() => navigate("/inventario?tab=infra")}>Acessar Inventário</Button>
                         </div>
                     </CardContent>
                 </Card>

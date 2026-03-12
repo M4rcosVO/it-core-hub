@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { demandasData, Demanda } from "@/data/mockData";
 import { useAudit } from "@/components/AuditContext";
+import { useToast } from "@/hooks/use-toast";
 
 const COLUMNS = [
     { id: "BACKLOG", label: "Backlog / Pendente", color: "bg-muted text-muted-foreground border-muted-foreground/30" },
@@ -29,6 +30,7 @@ export default function Demandas() {
     const [demandas, setDemandas] = useState<Demanda[]>(demandasData);
     const [search, setSearch] = useState("");
     const { addLog } = useAudit();
+    const { toast } = useToast();
 
     // Drag and Drop native state
     const [draggedId, setDraggedId] = useState<number | null>(null);
@@ -62,7 +64,6 @@ export default function Demandas() {
             d.id === draggedId ? { ...d, status: targetColumnId as Demanda["status"] } : d
         ));
 
-        // Audit Logging
         addLog({
             user: "Usuário Logado",
             action: "Movimentação de Kanban",
@@ -71,6 +72,17 @@ export default function Demandas() {
         });
 
         setDraggedId(null);
+    };
+
+    const markDemandaAsDone = (id: number, titulo: string) => {
+        setDemandas((prev) => prev.map((d) => d.id === id ? { ...d, status: "DONE" } : d));
+        toast({ title: "Demanda Concluída", description: `A tarefa "${titulo}" foi movida para Concluído.` });
+        addLog({
+            user: "Administrador",
+            action: "Conclusão de Demanda",
+            details: `Marcou a demanda "${titulo}" como Concluída via atalho.`,
+            module: 'Demandas'
+        });
     };
 
     const filteredDemandas = useMemo(() => {
@@ -106,7 +118,7 @@ export default function Demandas() {
                             className="pl-9 h-9 w-full"
                         />
                     </div>
-                    <Button className="gap-2 shrink-0 h-9">
+                    <Button className="gap-2 shrink-0 h-9" onClick={() => toast({ title: "Nova Demanda", description: "Formulário de nova demanda ativado." })}>
                         <Plus className="h-4 w-4" /> Nova Demanda
                     </Button>
                 </div>
@@ -151,12 +163,12 @@ export default function Demandas() {
                                                                 <MoreVertical className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem><FileEdit className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
-                                                            <DropdownMenuItem><History className="mr-2 h-4 w-4" /> Log de Atividade</DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem className="text-destructive focus:text-destructive"><CheckCircle2 className="mr-2 h-4 w-4" /> Marcar Concluído</DropdownMenuItem>
-                                                        </DropdownMenuContent>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => toast({ title: "Editor Ativo", description: "Modo de edição da demanda selecionada." })}><FileEdit className="mr-2 h-4 w-4" /> Editar</DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => toast({ title: "Registro de Log", description: "Carregando histórico de atividade do ticket..." })}><History className="mr-2 h-4 w-4" /> Log de Atividade</DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => markDemandaAsDone(demanda.id, demanda.titulo)}><CheckCircle2 className="mr-2 h-4 w-4" /> Marcar Concluído</DropdownMenuItem>
+                                                            </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </div>
 

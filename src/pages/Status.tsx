@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { incidentesData, Incidente } from "@/data/mockData";
 import { useAudit } from "@/components/AuditContext";
+import { useToast } from "@/hooks/use-toast";
 
 const CORE_SERVICES = [
     { id: "erp", name: "Sistema ERP", icon: Database, status: "online", uptime: "99.8%" },
@@ -31,6 +32,7 @@ export default function Status() {
     const [incidentes, setIncidentes] = useState<Incidente[]>(incidentesData);
     const [search, setSearch] = useState("");
     const { addLog } = useAudit();
+    const { toast } = useToast();
 
     const filteredIncidentes = incidentes.filter(i =>
         search === "" ||
@@ -62,7 +64,7 @@ export default function Status() {
                     <p className="text-muted-foreground text-sm mt-1">Gestão de incidentes (Post-mortem) e saúde dos sistemas críticos.</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <Button className="gap-2 shrink-0 h-9">
+                    <Button className="gap-2 shrink-0 h-9" onClick={() => toast({ title: "Registro de Incidente", description: "Wizard de Post-mortem / Abertura de incidente não implementado na v1." })}>
                         <Plus className="h-4 w-4" /> Registrar Incidente
                     </Button>
                 </div>
@@ -178,7 +180,7 @@ export default function Status() {
                             <p className="text-xs text-muted-foreground leading-relaxed">
                                 Um incidente só é considerado encerrado após a documentação da <b>causa raiz</b> e da <b>resolução</b>. O objetivo do Post-mortem é ser <i>blameless</i> (focado no problema, não em culpar pessoas).
                             </p>
-                            <Button variant="outline" className="w-full text-xs h-8">Ler Política de SLA</Button>
+                            <Button variant="outline" className="w-full text-xs h-8" onClick={() => toast({ title: "Redirecionando...", description: "Base de conhecimento e politicas de SLA abertas." })}>Ler Política de SLA</Button>
                         </CardContent>
                     </Card>
                 </div>

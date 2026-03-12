@@ -81,7 +81,7 @@ const menuGroups = [
       { title: "Contratos", url: "/contratos", icon: FileSignature },
       { title: "Rotinas", url: "/rotinas", icon: CheckSquare },
       { title: "Calendário", url: "/calendario", icon: CalendarDays },
-      { title: "Relatórios & BI", url: "/relatorios", icon: BarChart },
+      { title: "Relatórios", url: "/relatorios", icon: BarChart },
     ]
   },
   {

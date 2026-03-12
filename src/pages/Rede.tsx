@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   Tooltip,
@@ -367,7 +368,9 @@ export default function Rede() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button type="button">Salvar VLAN</Button>
+                  <DialogClose asChild>
+                    <Button type="button" onClick={() => toast({ title: "Subrede Cadastrada", description: "A topologia de VLAN foi atualizada." })}>Salvar VLAN</Button>
+                  </DialogClose>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -437,7 +440,9 @@ export default function Rede() {
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button type="button">Salvar Equipamento</Button>
+                    <DialogClose asChild>
+                      <Button type="button" onClick={() => toast({ title: "Equipamento Inserido", description: "Novo Switch comissionado no mapa com sucesso." })}>Salvar Equipamento</Button>
+                    </DialogClose>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

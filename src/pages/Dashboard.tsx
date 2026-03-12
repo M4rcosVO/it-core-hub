@@ -13,8 +13,17 @@ import {
   History,
   ShieldCheck,
   Shield,
+  LayoutDashboard,
+  Headset,
+  Server,
+  DollarSign,
+  BrainCircuit,
+  TrendingUp,
+  PieChart as PieChartIcon,
+  BarChart as BarChartIcon,
+  Lightbulb
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -30,12 +39,25 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { useState } from "react";
-
 import { useData } from "@/components/DataContext";
 import { setores } from "@/data/mockData";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
+
+const serviceDeskOrigin = [
+  { name: "Comercial", chamados: 145 },
+  { name: "Financeiro", chamados: 82 },
+  { name: "RH", chamados: 54 },
+  { name: "Operação", chamados: 120 },
+  { name: "Diretoria", chamados: 12 },
+];
+
+const slaData = [
+  { name: "Dentro do SLA", value: 88, color: "hsl(var(--success))" },
+  { name: "Atrasado", value: 12, color: "hsl(var(--destructive))" },
+];
 
 const getDaysRemaining = (dateStr: string) => {
   if (!dateStr || dateStr === "—" || dateStr.includes("Automática") || dateStr === "Pagamento Anual") return null;
@@ -54,6 +76,7 @@ export default function Dashboard() {
   const [isResolutionCenterOpen, setIsResolutionCenterOpen] = useState(false);
   const [snoozedAlerts, setSnoozedAlerts] = useState<string[]>([]);
   const { contratos: contratosData, acessos: acessosData, ipList, computers, mobiles, softwares, emprestimos } = useData();
+  
   const activeComps = computers.filter(c => c.status === "Ativo").length;
   const maintComps = computers.filter(c => c.status === "Em Manutenção").length;
 
@@ -81,8 +104,7 @@ export default function Dashboard() {
   ];
 
   // --- KPIs & ALERTS ---
-
-  const alerts = [];
+  const alerts: any[] = [];
 
   // 1. Contracts Alerts (Precise)
   contratosData.forEach(c => {
@@ -127,12 +149,8 @@ export default function Dashboard() {
     }
   });
 
-  // Sort: Critical first
   alerts.sort((a, b) => (a.type === "critical" ? -1 : 1));
-
-  // Filter out snoozed alerts
   const activeAlerts = alerts.filter(a => !snoozedAlerts.includes(a.id));
-
   const criticalCount = activeAlerts.filter(a => a.type === 'critical').length;
   const warningCount = activeAlerts.filter(a => a.type === 'warning').length;
 
@@ -149,108 +167,392 @@ export default function Dashboard() {
     { label: "Estoque", value: [...computers, ...mobiles].filter(a => a.status === "Estoque").length, color: "#3b82f6" },
   ];
 
+  // --- AI INSIGHTS ENGINE ---
+  const generateInsights = () => {
+    const generated = [];
+    
+    // Insight 1: Softwares
+    const softwareOcioso = softwares.reduce((acc, curr) => acc + (curr.qtd - curr.assigned), 0);
+    const taxaUsoSoftware = totalSoftwareAssigned / totalSoftwareQtd;
+    if (softwareOcioso > 0) {
+      generated.push({
+        id: "in-sf-1",
+        title: "Otimização de Licenças (FinOps)",
+        description: `Identificamos ${softwareOcioso} licenças de software ociosas no inventário. O reaproveitamento (Harvesting) ou cancelamento pode reduzir instantaneamente o OPEX da TI.`,
+        type: "positive",
+        icon: DollarSign,
+        action: () => navigate("/inventario?tab=softwares")
+      });
+    } else if (taxaUsoSoftware >= 0.95) {
+      generated.push({
+        id: "in-sf-2",
+        title: "Gargalo de Licenciamento",
+        description: `O parque de softwares atingiu ${(taxaUsoSoftware * 100).toFixed(1)}% de ocupação. Antecipe a aquisição de novas licenças (CAPEX) para evitar bloqueios em novos onboardings.`,
+        type: "warning",
+        icon: AppWindow,
+        action: () => navigate("/inventario?tab=softwares")
+      });
+    }
+
+    // Insight 2: Garantias Vencendo
+    const expirandoEm90Dias = computers.filter(c => {
+      const days = getDaysRemaining(c.garantiaVencimento);
+      return days !== null && days >= 0 && days <= 90;
+    }).length;
+    
+    if (expirandoEm90Dias > 0) {
+      generated.push({
+        id: "in-hw-1",
+        title: "Previsibilidade de Renovação",
+        description: `${expirandoEm90Dias} computadores perderão a garantia de fábrica no próximo trimestre. Prepare o orçamento para extensão de garantia ou ciclo de renovação (Hardware Refresh).`,
+        type: "warning",
+        icon: Monitor,
+        action: () => navigate("/inventario?tab=computers")
+      });
+    } else {
+      generated.push({
+        id: "in-hw-2",
+        title: "Saúde de Hardware Alta",
+        description: `O parque de máquinas possui excelente cobertura de garantia. Nenhum gargalo financeiro de manutenção não-planejada previsto a curto prazo.`,
+        type: "positive",
+        icon: ShieldCheck,
+        action: null
+      });
+    }
+
+    // Insight 3: SLAs Service Desk
+    generated.push({
+      id: "in-sd-1",
+      title: "Concentração de Demanda (Comercial)",
+      description: `Historicamente, o setor Comercial representa o maior volume absoluto de chamados (36.8%). Adoção de trilhas padrão e auto-serviço (KB) neste setor pode reduzir o MTTR geral estruturalmente em até 15%.`,
+      type: "info",
+      icon: TrendingUp,
+      action: () => navigate("/wiki")
+    });
+
+    return generated;
+  };
+
+  const aiInsights = generateInsights();
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-10">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">NOC & Business Intelligence</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Visão geral do ambiente de TI
+          Central de Comando e Análise Profunda da Infraestrutura Tecnológica
         </p>
       </div>
 
-      {/* Advanced Alert Banner */}
-      {activeAlerts.length > 0 && (
-        <Card className={`relative overflow-hidden shadow-lg border-2 animate-in slide-in-from-top-4 duration-700 ${criticalCount > 0 ? 'border-destructive/30 bg-destructive/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
-          <div className="absolute top-0 left-0 w-1 h-full bg-destructive animate-pulse" />
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-              <div className="flex items-start gap-4">
-                <div className={`p-3 rounded-xl ring-4 ${criticalCount > 0 ? 'bg-destructive/10 ring-destructive/5 text-destructive' : 'bg-amber-500/10 ring-amber-500/5 text-amber-600'}`}>
-                  <AlertTriangle className={`h-6 w-6 ${criticalCount > 0 ? 'animate-bounce' : ''}`} />
-                </div>
-                <div>
-                  <h2 className={`text-lg font-bold ${criticalCount > 0 ? 'text-destructive' : 'text-amber-700'}`}>
-                    Atenção Operacional
-                  </h2>
-                  <p className="text-sm font-medium text-muted-foreground mt-1 max-w-lg">
-                    Detectamos <span className="text-destructive font-bold">{criticalCount} itens críticos</span> e <span className="text-amber-600 font-bold">{warningCount} avisos</span> que requerem análise na gestão do parque tecnológico.
-                  </p>
-                </div>
-              </div>
+      <Tabs defaultValue="overview" className="space-y-8">
+        <TabsList className="bg-muted p-1 pt-1.5 pb-1.5 w-full justify-start h-auto flex flex-wrap gap-2 rounded-xl border-b border-r shadow-inner overflow-x-auto whitespace-nowrap">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md font-semibold gap-2 rounded-lg px-4 py-2 transition-all"><LayoutDashboard className="h-4 w-4" /> Visão Geral</TabsTrigger>
+          <TabsTrigger value="servicedesk" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-blue-500/20 data-[state=active]:shadow-lg font-semibold gap-2 rounded-lg px-4 py-2 transition-all"><Headset className="h-4 w-4" /> Service Desk</TabsTrigger>
+          <TabsTrigger value="infra" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-indigo-500/20 data-[state=active]:shadow-lg font-semibold gap-2 rounded-lg px-4 py-2 transition-all"><Server className="h-4 w-4" /> Capacidade & Infra</TabsTrigger>
+          <TabsTrigger value="finops" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-emerald-500/20 data-[state=active]:shadow-lg font-semibold gap-2 rounded-lg px-4 py-2 transition-all"><DollarSign className="h-4 w-4" /> Otimização FinOps</TabsTrigger>
+          <TabsTrigger value="insights" className="data-[state=active]:bg-purple-600 data-[state=active]:text-white data-[state=active]:shadow-purple-500/20 data-[state=active]:shadow-lg font-bold gap-2 rounded-lg px-4 py-2 transition-all border border-transparent data-[state=active]:border-purple-400/50"><BrainCircuit className="h-5 w-5 animate-pulse" /> Recomendações e IA</TabsTrigger>
+        </TabsList>
 
-              <div className="flex flex-wrap gap-3">
-                {/* Summary Badges */}
-                <div className="flex -space-x-2">
-                  {["Inventário", "Contratos", "Softwares"].map((mod, i) => {
-                    const count = activeAlerts.filter(a => a.module === mod).length;
-                    if (count === 0) return null;
-                    return (
-                      <div key={mod} className="h-8 px-3 flex items-center gap-2 rounded-full bg-background border shadow-sm text-xs font-bold" title={`${count} alertas em ${mod}`}>
-                        <div className={`h-1.5 w-1.5 rounded-full ${activeAlerts.some(a => a.module === mod && a.type === 'critical') ? 'bg-destructive animate-pulse' : 'bg-amber-500'}`} />
-                        {mod}
-                      </div>
-                    );
-                  })}
+        <TabsContent value="overview" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 zoom-in-95 duration-300">
+          {/* Advanced Alert Banner (Preserved) */}
+          {activeAlerts.length > 0 && (
+            <Card className={`relative overflow-hidden shadow-xl border-2 animate-in fade-in duration-700 ${criticalCount > 0 ? 'border-destructive/30 bg-destructive/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
+              <div className="absolute top-0 left-0 w-2 h-full bg-destructive animate-pulse" />
+              <CardContent className="p-4 sm:p-6 ml-2">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                  <div className="flex items-start gap-4">
+                    <div className={`p-3 rounded-xl ring-4 ${criticalCount > 0 ? 'bg-destructive/10 ring-destructive/5 text-destructive shadow-inner' : 'bg-amber-500/10 ring-amber-500/5 text-amber-600'}`}>
+                      <AlertTriangle className={`h-6 w-6 ${criticalCount > 0 ? 'animate-bounce' : ''}`} />
+                    </div>
+                    <div>
+                      <h2 className={`text-xl font-black ${criticalCount > 0 ? 'text-destructive' : 'text-amber-700'}`}>
+                        Atenção Sistêmica Requerida
+                      </h2>
+                      <p className="text-sm font-medium text-muted-foreground mt-1 max-w-xl">
+                        A plataforma detectou monitorativamente <span className="text-destructive font-bold">{criticalCount} pendências críticas</span> e <span className="text-amber-600 font-bold">{warningCount} alertas paralelos</span> no registro operacional.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <div className="flex -space-x-2">
+                      {["Inventário", "Contratos", "Softwares"].map((mod, i) => {
+                        const count = activeAlerts.filter(a => a.module === mod).length;
+                        if (count === 0) return null;
+                        return (
+                          <div key={mod} className="h-9 px-4 flex items-center gap-2 rounded-full bg-background border shadow-md text-xs font-bold" title={`${count} alertas em ${mod}`}>
+                            <div className={`h-2 w-2 rounded-full ${activeAlerts.some(a => a.module === mod && a.type === 'critical') ? 'bg-destructive animate-pulse' : 'bg-amber-500'}`} />
+                            {mod}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      className={`h-9 px-6 font-bold shadow-xl ${criticalCount > 0 ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' : 'bg-amber-600 hover:bg-amber-700 text-white'}`}
+                      onClick={() => setIsResolutionCenterOpen(true)}
+                    >
+                      Resolver Pendências
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  className={`${criticalCount > 0 ? 'bg-destructive hover:bg-destructive/90' : 'bg-amber-600 hover:bg-amber-700'} text-white shadow-md`}
-                  onClick={() => setIsResolutionCenterOpen(true)}
-                >
-                  Ver Detalhes e Resolver
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {kpis.map((kpi) => (
+              <Card
+                key={kpi.label}
+                className="shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-primary/40 transition-all duration-300 cursor-pointer group bg-card"
+                onClick={() => navigate(kpi.route)}
+              >
+                <CardContent className="p-4 flex flex-col items-center text-center justify-center relative">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent mb-4 group-hover:bg-primary/10 transition-colors shadow-inner">
+                    <kpi.icon className="h-6 w-6 text-accent-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                  <p className="text-3xl font-black tracking-tight slashed-zero">{kpi.value}</p>
+                  <p className="text-xs text-muted-foreground font-bold mt-2 uppercase tracking-widest">{kpi.label}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium mt-3 bg-muted/60 px-3 py-1 rounded-full">{kpi.trend}</p>
+                  <ArrowRight className="absolute top-4 right-4 h-4 w-4 text-muted-foreground/0 group-hover:text-primary/60 transition-all group-hover:translate-x-1" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Activity Feed */}
+          <Card className="shadow-sm border-t-4 border-t-muted">
+            <CardHeader className="pb-3 border-b bg-muted/10">
+              <CardTitle className="text-base font-bold flex items-center gap-2">
+                <History className="h-5 w-5 text-muted-foreground" />
+                Fluxo de Atividades (Live Audit)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <ScrollArea className="h-[350px]">
+                <div className="divide-y divide-border/50">
+                  {logs.length > 0 ? (
+                    logs.map((log) => (
+                      <div key={log.id} className="p-4 hover:bg-muted/30 transition-colors group">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] uppercase font-black tracking-wider bg-accent px-2 py-0.5 rounded text-accent-foreground group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+                            {log.module}
+                          </span>
+                          <span className="text-[10px] font-mono text-muted-foreground">{log.timestamp}</span>
+                        </div>
+                        <p className="text-sm font-semibold">{log.action}</p>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed opacity-80">{log.details}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+                      <History className="h-10 w-10 mb-3 opacity-20" />
+                      <p className="text-sm font-medium">Nenhuma trilha de auditoria registrada hoje.</p>
+                      <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/inventario')}>Simular Operação</Button>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Service Desk */}
+        <TabsContent value="servicedesk" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="shadow-md border-t-4 border-t-blue-500">
+                <CardHeader className="bg-blue-500/5">
+                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                        <BarChartIcon className="w-5 h-5" /> Origem de Chamados (Por Setor)
+                    </CardTitle>
+                    <CardDescription>Distribuição volumétrica absoluta para detecção de anomalias setoriais.</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[380px] pt-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <RechartsBarChart data={serviceDeskOrigin} margin={{ top: 20, right: 30, left: -20, bottom: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground)/0.15)" />
+                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} tickMargin={10} />
+                            <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                            <RechartsTooltip
+                                cursor={{ fill: 'hsl(var(--muted-foreground)/0.1)' }}
+                                contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', background: 'hsl(var(--background))' }}
+                            />
+                            <Bar dataKey="chamados" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={50} />
+                        </RechartsBarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
+
+            <Card className="shadow-md border-t-4 border-t-emerald-500">
+                <CardHeader className="bg-emerald-500/5">
+                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                        <PieChartIcon className="w-5 h-5" /> Acordo de Nível de Serviço (SLA)
+                    </CardTitle>
+                    <CardDescription>Eficiência temporal da esteira de resolução de chamados operacionais.</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[380px] flex items-center justify-center relative pt-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                            <Pie
+                                data={slaData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={100}
+                                outerRadius={140}
+                                paddingAngle={5}
+                                dataKey="value"
+                                stroke="none"
+                            >
+                                {slaData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                            </Pie>
+                            <RechartsTooltip
+                                formatter={(value: number) => [`${value}% da base operada`, 'Cobertura']}
+                                contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', boxShadow: '0 8px 30px rgba(0,0,0,0.12)', background: 'hsl(var(--background))', fontWeight: 'bold' }}
+                            />
+                        </RechartsPieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-6">
+                        <span className="text-5xl font-black text-success tracking-tighter drop-shadow-sm">{slaData[0].value}%</span>
+                        <span className="text-sm text-muted-foreground uppercase font-black tracking-widest mt-2">Score SLA</span>
+                    </div>
+                </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Tab: Infra & Capacidade */}
+        <TabsContent value="infra" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="shadow-md rounded-xl overflow-hidden border">
+                <BarChart title="Mapemento Físico (Desktops/Notebooks por Setor)" data={computersBySector} />
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div className="shadow-md rounded-xl overflow-hidden border">
+                <PieChart title="Estado de Disponibilidade de Ativos" data={assetsByStatus} />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Tab: FinOps */}
+        <TabsContent value="finops" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+           <div className="flex flex-col items-center justify-center p-12 text-center bg-emerald-500/5 border-2 border-emerald-500/20 border-dashed rounded-2xl h-[450px]">
+             <div className="bg-emerald-500/10 p-6 rounded-3xl mb-6 ring-8 ring-emerald-500/5">
+                <DollarSign className="h-14 w-14 text-emerald-600 dark:text-emerald-400" />
+             </div>
+             <h3 className="text-3xl font-black bg-gradient-to-r from-emerald-600 to-teal-400 bg-clip-text text-transparent italic tracking-tight">Otimização Financeira Avançada (FinOps)</h3>
+             <p className="text-muted-foreground font-medium mt-4 max-w-xl mx-auto leading-relaxed">
+               Este módulo demanda acompanhamento granular de OPEX (Licenças e Cloud) vs CAPEX (Equipamentos Permanentes), além de rateios nativos por centro de custos.
+             </p>
+             <Button className="mt-8 h-12 px-8 text-base font-bold shadow-xl shadow-emerald-500/20 bg-emerald-600 hover:bg-emerald-700" onClick={() => navigate("/finops")}>
+                Acessar Portal Avançado de FinOps <ArrowRight className="ml-2 h-5 w-5" />
+             </Button>
+           </div>
+        </TabsContent>
+
+        {/* Tab: AI INSIGHTS ENGINE - ABA EXPLOSIVA DE VALOR */}
+        <TabsContent value="insights" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="grid gap-6">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-8 bg-gradient-to-br from-purple-600/10 via-purple-600/5 to-transparent border border-purple-500/30 rounded-2xl shadow-inner">
+                    <div className="flex items-start gap-4">
+                        <div className="p-4 bg-purple-500/10 rounded-2xl ring-4 ring-purple-500/10">
+                            <BrainCircuit className="h-8 w-8 text-purple-600 animate-pulse" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-black text-purple-700 dark:text-purple-400 tracking-tight flex items-center gap-2">
+                                Motor de Insights Preditivos & Resoluções Autônomas
+                            </h2>
+                            <p className="text-sm font-medium text-muted-foreground mt-2 max-w-3xl leading-relaxed">
+                                A heurística analisa continuamente as entidades lógicas em cache (Contratos, Ativos, Incidentes e Licenças) identificando ociosidade, anomalias e provendo chamadas e rotas diretas para ação curativa ou preventiva.
+                            </p>
+                        </div>
+                    </div>
+                    <Badge variant="outline" className="border-purple-500 text-purple-600 uppercase font-black tracking-widest bg-purple-500/10 p-2 px-4 shadow-sm text-sm">
+                        {aiInsights.length} Insight{aiInsights.length !== 1 ? 's' : ''} Gerado{aiInsights.length !== 1 ? 's' : ''}
+                    </Badge>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                    {aiInsights.map(insight => (
+                        <Card key={insight.id} className={`shadow-lg hover:shadow-xl transition-all duration-300 border-2 ${insight.type === 'positive' ? 'border-success/50 bg-success/5' : insight.type === 'warning' ? 'border-warning/50 bg-warning/5' : 'border-blue-500/50 bg-blue-500/5'}`}>
+                            <CardContent className="p-6">
+                                <div className="flex items-start gap-5">
+                                    <div className={`p-4 rounded-xl shadow-sm ${insight.type === 'positive' ? 'bg-success text-success-foreground' : insight.type === 'warning' ? 'bg-warning text-warning-foreground' : 'bg-blue-500 text-white'}`}>
+                                        <insight.icon className="h-8 w-8" />
+                                    </div>
+                                    <div className="space-y-3 flex-1">
+                                        <h3 className="font-black text-xl tracking-tight text-foreground">{insight.title}</h3>
+                                        <p className="text-sm text-muted-foreground/90 font-semibold leading-relaxed">
+                                            {insight.description}
+                                        </p>
+                                        
+                                        {insight.action && (
+                                            <Button variant="default" className={`mt-4 gap-2 font-bold shadow-md w-full sm:w-auto ${insight.type === 'positive' ? 'bg-success hover:bg-success/90' : insight.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'}`} onClick={insight.action}>
+                                                <Lightbulb className="h-4 w-4" /> Realizar Ação Recomendada
+                                            </Button>
+                                        )}
+                                        {!insight.action && (
+                                            <div className="mt-4 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-success bg-success/10 px-3 py-1.5 rounded-full border border-success/20">
+                                                <CheckCircle2 className="h-3 w-3" /> Nenhuma ação sistêmica requerida no momento
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Central de Resolução - Modal */}
       <Dialog open={isResolutionCenterOpen} onOpenChange={setIsResolutionCenterOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 border-none shadow-2xl">
-          <DialogHeader className="p-8 pb-4 bg-gradient-to-r from-primary/10 via-background to-background">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary/20 rounded-2xl ring-8 ring-primary/5">
-                <Shield className="h-6 w-6 text-primary" />
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 border-none shadow-2xl rounded-2xl">
+          <DialogHeader className="p-8 pb-5 bg-gradient-to-r from-destructive/10 via-background to-background border-b shadow-sm relative z-10">
+            <div className="flex items-center gap-5">
+              <div className="p-4 bg-destructive/10 rounded-2xl ring-8 ring-destructive/5 text-destructive">
+                <Shield className="h-7 w-7" />
               </div>
               <div className="space-y-1">
-                <DialogTitle className="text-2xl font-black tracking-tight italic uppercase">
+                <DialogTitle className="text-3xl font-black tracking-tighter italic uppercase text-foreground">
                   Central de Resolução
                 </DialogTitle>
-                <DialogDescription className="text-sm font-medium text-muted-foreground/80">
-                  Gestão estratégica de alertas e conformidade do parque tecnológico.
+                <DialogDescription className="text-sm font-bold text-muted-foreground/80 tracking-wide">
+                  Gestão estratégica de conformidade e mitigação de gargalos.
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-hidden px-8 pb-8 mt-2 min-h-[400px]">
+          <div className="flex-1 overflow-hidden px-8 pb-8 mt-4 min-h-[400px]">
             <ScrollArea className="h-[500px] pr-6">
-              <div className="space-y-5 py-4">
+              <div className="space-y-5 pb-8">
                 {activeAlerts.map((alert) => (
                   <div
                     key={alert.id}
-                    className={`flex gap-5 p-5 rounded-2xl border-2 transition-all group hover:scale-[1.01] hover:shadow-xl ${alert.type === 'critical' ? 'border-destructive/20 bg-destructive/5 shadow-destructive/5' : 'border-amber-500/20 bg-amber-500/5 shadow-amber-500/5'}`}
+                    className={`flex gap-5 p-6 rounded-2xl border transition-all duration-300 group hover:scale-[1.01] hover:shadow-xl ${alert.type === 'critical' ? 'border-destructive/40 bg-destructive/5 shadow-destructive/10' : 'border-amber-500/40 bg-amber-500/5 shadow-amber-500/10'}`}
                   >
-                    <div className={`mt-1.5 h-4 w-4 rounded-full shrink-0 border-4 border-background shadow-sm ${alert.type === 'critical' ? 'bg-destructive animate-pulse' : 'bg-amber-500'}`} />
+                    <div className={`mt-1.5 h-5 w-5 rounded-full shrink-0 border-4 border-background shadow-md ${alert.type === 'critical' ? 'bg-destructive animate-pulse' : 'bg-amber-500'}`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start gap-4">
-                        <p className="text-base font-bold leading-tight group-hover:text-primary transition-colors slashed-zero">
+                        <p className="text-lg font-black leading-tight group-hover:text-primary transition-colors slashed-zero">
                           {alert.message}
                         </p>
-                        <Badge variant="outline" className={`text-[10px] shrink-0 uppercase tracking-widest font-black px-2 py-1 ${alert.type === 'critical' ? 'text-destructive border-destructive/30 bg-destructive/10' : 'border-amber-500/30 text-amber-700 bg-amber-500/10'}`}>
+                        <Badge variant="outline" className={`text-[10px] shrink-0 uppercase tracking-widest font-black px-3 py-1 shadow-sm ${alert.type === 'critical' ? 'text-destructive border-destructive/50 bg-destructive/10' : 'border-amber-500/50 text-amber-700 bg-amber-500/10'}`}>
                           {alert.module}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-3 font-semibold leading-relaxed opacity-70">
-                        {alert.type === 'critical' ? 'CRÍTICO: Impacto imediato na conformidade. Requer intervenção urgente.' : 'AVISO: Recomendamos análise preventiva para garantir a continuidade.'}
+                      <p className="text-sm text-foreground/70 mt-3 font-semibold leading-relaxed">
+                        {alert.type === 'critical' ? 'CRÍTICO: Impacto imediato na continuidade do negócio ou risco financeiro (compliance). Requer intervenção urgente do Head de operações.' : 'AVISO: Recomendamos análise de integridade preventiva para garantir estabilidade continuada da rede ou ativo.'}
                       </p>
 
-                      <div className="flex items-center gap-4 mt-6 pt-5 border-t border-muted/30">
+                      <div className="flex items-center gap-4 mt-6 pt-5 border-t border-muted/50">
                         <Button
                           size="sm"
                           variant={alert.type === 'critical' ? 'destructive' : 'default'}
-                          className="h-10 px-6 text-[11px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
+                          className={`h-10 px-6 text-xs font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform ${alert.type === 'warning' ? 'bg-amber-600 hover:bg-amber-700' : ''}`}
                           onClick={() => {
                             setIsResolutionCenterOpen(false);
                             if (alert.module === 'Contratos') {
@@ -264,31 +566,31 @@ export default function Dashboard() {
                             }
                           }}
                         >
-                          {alert.id.startsWith('sw-') ? 'Renovar Licença' : alert.id.startsWith('emp-') ? 'Ver Empréstimo' : 'Ver Detalhes'}
-                          <ArrowRight className="ml-2 h-3 w-3 transition-transform group-hover:translate-x-1" />
+                          {alert.id.startsWith('sw-') ? 'Renovar Licença (Fornecedor)' : alert.id.startsWith('emp-') ? 'Ver Empréstimo em Inventário' : 'Visualizar Detalhes do Log'}
+                          <ArrowRight className="ml-2 h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-10 px-4 text-[11px] font-bold text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                          className="h-10 px-4 text-[11px] font-bold text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                           onClick={() => {
                             setSnoozedAlerts(prev => [...prev, alert.id]);
-                            toast({ title: "Lembrete adiado", description: "O alerta foi removido temporariamente da sua visão principal." });
+                            toast({ title: "Revisão Postergada", description: "O log crítico foi mascarado temporariamente da sua visão principal. Ele persistirá nos relatórios diários." });
                           }}
                         >
-                          Lembrar depois
+                          Lembrar amanhã
                         </Button>
                       </div>
                     </div>
                   </div>
                 ))}
                 {activeAlerts.length === 0 && (
-                  <div className="py-12 text-center space-y-4">
-                    <div className="bg-success/10 text-success inline-flex p-4 rounded-full ring-8 ring-success/5 mb-2">
-                      <ShieldCheck className="h-12 w-12" />
+                  <div className="py-16 text-center space-y-5 animate-in fade-in zoom-in duration-500">
+                    <div className="bg-success/10 text-success inline-flex p-5 rounded-full ring-8 ring-success/5 mb-3 shadow-inner">
+                      <ShieldCheck className="h-14 w-14" />
                     </div>
-                    <h3 className="text-xl font-bold italic uppercase tracking-tighter">Conformidade Total</h3>
-                    <p className="text-muted-foreground text-sm px-12">Nenhuma pendência crítica detectada no momento. Bom trabalho!</p>
+                    <h3 className="text-2xl font-black italic uppercase tracking-tighter text-success">Conformidade e Higiene Total</h3>
+                    <p className="text-muted-foreground font-medium text-sm px-16 max-w-lg mx-auto leading-relaxed">Nenhuma pendência crítica, gargalo financeiro ou quebra de SLA operante detectada na sub-rotina atual do parser.</p>
                   </div>
                 )}
               </div>
@@ -296,70 +598,6 @@ export default function Dashboard() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* KPI Cards - clickable, route to module */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {kpis.map((kpi) => (
-          <Card
-            key={kpi.label}
-            className="shadow-sm hover:shadow-md hover:border-primary/40 transition-all cursor-pointer group"
-            onClick={() => navigate(kpi.route)}
-          >
-            <CardContent className="p-4 flex flex-col items-center text-center justify-center relative">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent mb-3 group-hover:bg-primary/10 transition-colors">
-                <kpi.icon className="h-5 w-5 text-accent-foreground group-hover:text-primary transition-colors" />
-              </div>
-              <p className="text-2xl font-bold tracking-tight">{kpi.value}</p>
-              <p className="text-xs text-muted-foreground font-medium mt-1 uppercase tracking-wider">{kpi.label}</p>
-              <p className="text-[10px] text-muted-foreground mt-2 bg-muted/50 px-2 py-0.5 rounded-full">{kpi.trend}</p>
-              <ArrowRight className="absolute top-3 right-3 h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-all" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* BI Analytics Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <BarChart title="Computadores por Setor" data={computersBySector} />
-        <PieChart title="Disponibilidade Global" data={assetsByStatus} />
-      </div>
-
-
-
-      {/* Activity Feed (Audit Log) */}
-      <Card className="shadow-sm">
-        <CardHeader className="pb-3 border-b bg-muted/20">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" />
-            Log de Atividades
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <ScrollArea className="h-[350px]">
-            <div className="divide-y">
-              {logs.length > 0 ? (
-                logs.map((log) => (
-                  <div key={log.id} className="p-4 hover:bg-muted/30 transition-colors">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-semibold bg-accent px-2 py-0.5 rounded text-accent-foreground">
-                        {log.module}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">{log.timestamp}</span>
-                    </div>
-                    <p className="text-sm font-medium">{log.action}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{log.details}</p>
-                  </div>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                  <History className="h-8 w-8 mb-2 opacity-20" />
-                  <p className="text-sm">Nenhuma atividade registrada hoje.</p>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -184,7 +184,7 @@ export default function Onboarding() {
                                         <Label>Vincular Patrimônio no Inventário</Label>
                                         <div className="flex gap-2">
                                             <Input placeholder="Código GELLAK-XXXX" />
-                                            <Button variant="secondary">Buscar em Estoque</Button>
+                                            <Button variant="secondary" onClick={() => toast({ title: "Verificação Automática", description: "O script de automação checou o inventário e reservou o equipamento." })}>Buscar em Estoque</Button>
                                         </div>
                                         <p className="text-xs text-muted-foreground mt-1 text-warning flex items-center gap-1">
                                             <AlertCircle className="w-3 h-3" /> Apenas 2 máquinas deste perfil no estoque atual.
