@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Activity, AlertCircle, Clock, CheckCircle2, XCircle, ShieldAlert, MonitorPlay, Maximize2, Server } from "lucide-react";
+import { Activity, AlertCircle, Clock, CheckCircle2, XCircle, ShieldAlert, MonitorPlay, Maximize2, Server, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { incidentesData } from "@/data/mockData";
 import { useData } from "@/components/DataContext";
@@ -21,6 +22,7 @@ const NOC_SERVICES = [
 
 export default function Noc() {
     const { computers, mobiles, peripherals } = useData();
+    const navigate = useNavigate();
     const equipamentosCount = computers.length + mobiles.length + peripherals.length;
 
     // Fallback static alerts for NOC display
@@ -44,6 +46,16 @@ export default function Noc() {
         return <Activity className="h-6 w-6 text-gray-400" />;
     };
 
+    const toggleFullScreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(e => console.log(e));
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    };
+
     const getStatusColor = (status: string) => {
         if (status === "online") return "border-emerald-500/30 bg-emerald-500/10";
         if (status === "warning") return "border-amber-500/50 bg-amber-500/20";
@@ -55,11 +67,16 @@ export default function Noc() {
         <div className="dark min-h-screen bg-[#0a0a0a] text-zinc-100 p-6 font-sans flex flex-col h-screen overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-zinc-800 pb-4 shrink-0">
-                <div className="flex items-center gap-3">
-                    <MonitorPlay className="h-8 w-8 text-blue-500" />
-                    <div>
-                        <h1 className="text-2xl font-black tracking-widest text-zinc-100 uppercase">Gellak NOC</h1>
-                        <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest">Network Operations Center</p>
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white" onClick={() => navigate("/")} title="Voltar ao Dashboard">
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <div className="flex items-center gap-3 border-l border-zinc-800 pl-4">
+                        <MonitorPlay className="h-8 w-8 text-blue-500" />
+                        <div>
+                            <h1 className="text-2xl font-black tracking-widest text-zinc-100 uppercase">Gellak NOC</h1>
+                            <p className="text-zinc-500 text-xs font-mono uppercase tracking-widest">Network Operations Center</p>
+                        </div>
                     </div>
                 </div>
                 <div className="flex items-center gap-6">
@@ -67,7 +84,7 @@ export default function Noc() {
                         <div className="text-3xl font-mono font-black tracking-tight text-white">{format(time, "HH:mm:ss")}</div>
                         <div className="text-zinc-500 text-sm font-medium">{format(time, "dd 'de' MMM, yyyy", { locale: ptBR })}</div>
                     </div>
-                    <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white" title="Fullscreen" onClick={() => document.documentElement.requestFullscreen().catch(e => console.log(e))}>
+                    <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white" title="Toggle Fullscreen" onClick={toggleFullScreen}>
                         <Maximize2 className="h-5 w-5" />
                     </Button>
                 </div>
