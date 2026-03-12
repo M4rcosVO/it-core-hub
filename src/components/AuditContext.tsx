@@ -6,7 +6,7 @@ export type AuditEntry = {
     action: string;
     details: string;
     timestamp: string;
-    module: 'Inventário' | 'Acessos' | 'Rede' | 'Contratos' | 'Wiki' | 'Config' | 'Dashboard' | 'Rotinas' | 'Relatórios & BI' | 'Demandas' | 'FinOps' | 'Onboarding' | 'Compras' | 'Cmdb';
+    module: 'Inventário' | 'Acessos' | 'Rede' | 'Contratos' | 'Wiki' | 'Config' | 'Dashboard' | 'Rotinas' | 'Relatórios' | 'Demandas' | 'FinOps' | 'Onboarding' | 'Compras' | 'Cmdb';
 };
 
 interface AuditContextType {
