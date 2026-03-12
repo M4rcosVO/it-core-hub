@@ -21,7 +21,13 @@ import {
   TrendingUp,
   PieChart as PieChartIcon,
   BarChart as BarChartIcon,
-  Lightbulb
+  Lightbulb,
+  Clock,
+  Ticket,
+  Users,
+  HardDrive,
+  HeartPulse,
+  ShieldCheck as ShieldCheckIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +48,7 @@ import {
 } from "@/components/ui/dialog";
 import { useState } from "react";
 import { useData } from "@/components/DataContext";
-import { setores } from "@/data/mockData";
+import { setores, demandasData, incidentesData, agendamentosRotinas, infraestrutura } from "@/data/mockData";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveContainer, BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, PieChart as RechartsPieChart, Pie, Cell } from "recharts";
 
@@ -102,6 +108,10 @@ export default function Dashboard() {
     { label: "Itens Cofre/Rede", value: totalAcessos, icon: Key, trend: `${vpnAcessos} VPN(s) config.`, route: "/acessos" },
     { label: "IPs em Uso", value: totalIps, icon: Globe, trend: "Monitorados no IPAM", route: "/rede?tab=ipam" },
   ];
+
+  const activeIncidents = incidentesData.filter(i => !i.resolucao.includes("Reparo concluído") && !i.resolucao.includes("Rollback")).length; // Simulating active vs resolved based on text for mock
+  const activeDemands = demandasData.filter(d => d.status === "DOING" || d.status === "REVIEW").length;
+  const pendingRoutines = agendamentosRotinas.filter(r => r.status === "Agendado").length;
 
   // --- KPIs & ALERTS ---
   const alerts: any[] = [];
@@ -321,45 +331,140 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Activity Feed */}
-          <Card className="shadow-sm border-t-4 border-t-muted">
-            <CardHeader className="pb-3 border-b bg-muted/10">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <History className="h-5 w-5 text-muted-foreground" />
-                Fluxo de Atividades (Live Audit)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[350px]">
-                <div className="divide-y divide-border/50">
-                  {logs.length > 0 ? (
-                    logs.map((log) => (
-                      <div key={log.id} className="p-4 hover:bg-muted/30 transition-colors group">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[10px] uppercase font-black tracking-wider bg-accent px-2 py-0.5 rounded text-accent-foreground group-hover:bg-primary/20 group-hover:text-primary transition-colors">
-                            {log.module}
-                          </span>
-                          <span className="text-[10px] font-mono text-muted-foreground">{log.timestamp}</span>
+          {/* Second Row: Activity Feed + Mini Panels */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Activity Feed */}
+            <Card className="shadow-sm border-t-4 border-t-muted lg:col-span-1">
+              <CardHeader className="pb-3 border-b bg-muted/10">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <History className="h-5 w-5 text-muted-foreground" />
+                  Fluxo de Auditoria (Live)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[350px]">
+                  <div className="divide-y divide-border/50">
+                    {logs.length > 0 ? (
+                      logs.map((log) => (
+                        <div key={log.id} className="p-4 hover:bg-muted/30 transition-colors group">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] uppercase font-black tracking-wider bg-accent px-2 py-0.5 rounded text-accent-foreground group-hover:bg-primary/20 group-hover:text-primary transition-colors">
+                              {log.module}
+                            </span>
+                            <span className="text-[10px] font-mono text-muted-foreground">{log.timestamp}</span>
+                          </div>
+                          <p className="text-sm font-semibold">{log.action}</p>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed opacity-80">{log.details}</p>
                         </div>
-                        <p className="text-sm font-semibold">{log.action}</p>
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed opacity-80">{log.details}</p>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full min-h-[250px] text-muted-foreground">
+                        <History className="h-10 w-10 mb-3 opacity-20" />
+                        <p className="text-sm font-medium">Nenhuma trilha hoje.</p>
                       </div>
-                    ))
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                      <History className="h-10 w-10 mb-3 opacity-20" />
-                      <p className="text-sm font-medium">Nenhuma trilha de auditoria registrada hoje.</p>
-                      <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate('/inventario')}>Simular Operação</Button>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            {/* Quick Insights Grid */}
+            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+               {/* Equipe & Tarefas */}
+               <Card className="shadow-sm border border-border/50 hover:shadow-md transition-shadow">
+                  <CardContent className="p-5 flex flex-col h-full bg-gradient-to-br from-blue-500/5 to-transparent">
+                     <div className="flex justify-between items-start mb-4">
+                        <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-600">
+                           <Activity className="h-5 w-5" />
+                        </div>
+                        <Badge variant="outline" className="text-xs font-bold text-blue-600 bg-blue-500/5 border-blue-500/20">{activeDemands} em Andamento</Badge>
+                     </div>
+                     <h3 className="text-lg font-black tracking-tight mb-1">Demandas da TI</h3>
+                     <p className="text-sm text-muted-foreground flex-1">Projetos estruturais e solicitações ativas no Kanban.</p>
+                     <Button variant="ghost" size="sm" className="w-full mt-4 justify-between bg-background border shadow-sm group hover:border-blue-500/30" onClick={() => navigate('/demandas')}>
+                        Gerenciar Projetos <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                     </Button>
+                  </CardContent>
+               </Card>
+
+               {/* Status dos Serviços */}
+               <Card className="shadow-sm border border-border/50 hover:shadow-md transition-shadow">
+                  <CardContent className="p-5 flex flex-col h-full bg-gradient-to-br from-indigo-500/5 to-transparent">
+                     <div className="flex justify-between items-start mb-4">
+                        <div className="p-2.5 bg-indigo-500/10 rounded-xl text-indigo-600">
+                           <Globe className="h-5 w-5" />
+                        </div>
+                        <Badge variant="outline" className="text-xs font-bold text-indigo-600 bg-indigo-500/5 border-indigo-500/20">{incidentesData.length} Registros Mês</Badge>
+                     </div>
+                     <h3 className="text-lg font-black tracking-tight mb-1">Status (Uptime)</h3>
+                     <p className="text-sm text-muted-foreground flex-1">Monitoramento de links de internet, telefonia e ERP.</p>
+                     <Button variant="ghost" size="sm" className="w-full mt-4 justify-between bg-background border shadow-sm group hover:border-indigo-500/30" onClick={() => navigate('/status')}>
+                        Ver Histórico (Status Page) <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                     </Button>
+                  </CardContent>
+               </Card>
+
+               {/* Rotinas */}
+               <Card className="shadow-sm border border-border/50 hover:shadow-md transition-shadow sm:col-span-2">
+                  <CardContent className="p-5 flex flex-col sm:flex-row gap-5 items-center bg-gradient-to-tr from-muted/30 to-background border-l-4 border-l-primary">
+                     <div className="p-3 bg-primary/10 rounded-2xl text-primary shrink-0">
+                        <CheckCircle2 className="h-6 w-6" />
+                     </div>
+                     <div className="flex-1 text-center sm:text-left">
+                        <h3 className="text-base font-black tracking-tight">Suporte Zero-Trust & Manutenções</h3>
+                        <p className="text-sm text-muted-foreground mt-0.5">Existem <strong className="text-foreground">{pendingRoutines} rotinas programadas</strong> (auditorias, backups, preventivas) aguardando execução da equipe técnica.</p>
+                     </div>
+                     <Button variant="default" size="sm" className="shrink-0 shadow-md w-full sm:w-auto" onClick={() => navigate('/rotinas')}>
+                        Acessar Rotinas Diárias
+                     </Button>
+                  </CardContent>
+               </Card>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Tab: Service Desk */}
         <TabsContent value="servicedesk" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          
+          {/* Service Desk Quick Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="shadow-sm border-t-4 border-t-blue-500 bg-gradient-to-br from-blue-500/5 to-transparent">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="p-3 bg-blue-500/10 text-blue-600 rounded-2xl ring-4 ring-blue-500/5">
+                  <Ticket className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Abertos Hoje</p>
+                  <p className="text-3xl font-black text-foreground">14<span className="text-sm font-medium text-muted-foreground ml-2">tickets</span></p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-t-4 border-t-indigo-500 bg-gradient-to-br from-indigo-500/5 to-transparent">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="p-3 bg-indigo-500/10 text-indigo-600 rounded-2xl ring-4 ring-indigo-500/5">
+                  <Clock className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">MTTR Geral (Mês)</p>
+                  <p className="text-3xl font-black text-foreground">1.8<span className="text-sm font-medium text-muted-foreground ml-2">horas med.</span></p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-t-4 border-t-emerald-500 bg-gradient-to-br from-emerald-500/5 to-transparent">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-2xl ring-4 ring-emerald-500/5">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Satisfação (CSAT)</p>
+                  <p className="text-3xl font-black text-foreground">96.5<span className="text-sm font-medium text-muted-foreground ml-2">% aprovação</span></p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="shadow-md border-t-4 border-t-blue-500">
                 <CardHeader className="bg-blue-500/5">
@@ -425,6 +530,47 @@ export default function Dashboard() {
 
         {/* Tab: Infra & Capacidade */}
         <TabsContent value="infra" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          
+          {/* Infra Quick Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className="shadow-sm border-t-4 border-t-purple-500 bg-gradient-to-br from-purple-500/5 to-transparent">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="p-3 bg-purple-500/10 text-purple-600 rounded-2xl ring-4 ring-purple-500/5">
+                  <HardDrive className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Datacenter & Borda</p>
+                  <p className="text-3xl font-black text-foreground">{infraestrutura.filter(i => i.status === "Ativo").length}<span className="text-sm font-medium text-muted-foreground ml-2">ativos core</span></p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-t-4 border-t-teal-500 bg-gradient-to-br from-teal-500/5 to-transparent">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="p-3 bg-teal-500/10 text-teal-600 rounded-2xl ring-4 ring-teal-500/5">
+                  <HeartPulse className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Saúde do Parque</p>
+                  <p className="text-3xl font-black text-foreground">{Math.round((activeComps / (activeComps + maintComps)) * 100)}<span className="text-sm font-medium text-muted-foreground ml-2">% operantes</span></p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-t-4 border-t-amber-500 bg-gradient-to-br from-amber-500/5 to-transparent">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="p-3 bg-amber-500/10 text-amber-600 rounded-2xl ring-4 ring-amber-500/5">
+                  <ShieldCheckIcon className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Garantia Ativa (SLA)</p>
+                  {/* Calcs dynamically based on mockData dates being mostly in the future for "Ativos" */}
+                  <p className="text-3xl font-black text-foreground">{Math.round((computers.filter(c => getDaysRemaining(c.garantiaVencimento) !== null && (getDaysRemaining(c.garantiaVencimento) ?? -1) > 0).length / computers.length) * 100)}<span className="text-sm font-medium text-muted-foreground ml-2">% cobertos</span></p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="shadow-md rounded-xl overflow-hidden border">
                 <BarChart title="Mapemento Físico (Desktops/Notebooks por Setor)" data={computersBySector} />
