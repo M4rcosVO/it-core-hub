@@ -21,6 +21,7 @@ import {
   UserPlus,
   ShoppingCart,
   Laptop,
+  Smartphone,
   ShieldCheck,
   MonitorPlay,
   Headset
@@ -65,6 +66,7 @@ const menuGroups = [
     label: "RECURSOS E ATIVOS",
     items: [
       { title: "Inventário & Licenças", url: "/inventario", icon: Laptop },
+      { title: "Gestão de Celulares", url: "/celulares", icon: Smartphone },
       { title: "CMDB Visual (Grafo)", url: "/cmdb", icon: Network },
       { title: "Gestão de Acessos", url: "/acessos", icon: ShieldCheck },
       { title: "Rede & Infra", url: "/rede", icon: Network }, // Kept original Rede & Infra

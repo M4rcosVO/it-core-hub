@@ -3,12 +3,12 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './prisma';
+import mobileDeviceRoutes from './routes/mobileDeviceRoutes';
 
 dotenv.config();
 
 const app = express();
-const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'gellak-default-secret';
 
@@ -56,6 +56,10 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ error: 'Login failed' });
   }
 });
+
+// Mobile Device Routes
+app.use('/api/mobile-devices', mobileDeviceRoutes);
+app.use('/api/celulares', mobileDeviceRoutes);
 
 // Generic Data Routes (To be expanded)
 app.get('/api/computers', authenticateToken, async (req, res) => {

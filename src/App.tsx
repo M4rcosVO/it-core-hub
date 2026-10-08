@@ -6,6 +6,7 @@ import { AppProviders } from "./AppProviders";
 // Lazy loaded routes (O1)
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Inventario = lazy(() => import("@/pages/Inventario"));
+const Celulares = lazy(() => import("@/pages/Celulares"));
 const Rede = lazy(() => import("@/pages/Rede"));
 const Wiki = lazy(() => import("@/pages/Wiki"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
@@ -39,6 +40,7 @@ const App = () => (
           <Route element={<AppLayout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/inventario" element={<Inventario />} />
+            <Route path="/celulares" element={<Celulares />} />
             <Route path="/rede" element={<Rede />} />
             <Route path="/acessos" element={<Acessos />} />
             <Route path="/contratos" element={<Contratos />} />
