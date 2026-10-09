@@ -7,6 +7,7 @@ import { AppProviders } from "./AppProviders";
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Inventario = lazy(() => import("@/pages/Inventario"));
 const Celulares = lazy(() => import("@/pages/Celulares"));
+const PublicColeta = lazy(() => import("@/pages/PublicColeta"));
 const Rede = lazy(() => import("@/pages/Rede"));
 const Wiki = lazy(() => import("@/pages/Wiki"));
 const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
@@ -59,6 +60,8 @@ const App = () => (
           </Route>
           {/* NOC route outside AppLayout to remove sidebar & topbar entirely */}
           <Route path="/noc" element={<Noc />} />
+          {/* Public satellite page — isolated from admin chrome and navigation */}
+          <Route path="/coleta-aparelho" element={<PublicColeta />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

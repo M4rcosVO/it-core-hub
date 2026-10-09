@@ -59,21 +59,24 @@ export const getMobileDeviceById = async (req: Request, res: Response) => {
 
 export const createMobileDevice = async (req: Request, res: Response) => {
   try {
-    const { imei, brand, model, phoneNumber, status, assignedTo } = req.body;
+    const { imei, brand, model, phoneNumber, status, assignedTo, department } = req.body;
 
-    if (!imei || !brand || !model) {
+    if (!brand || !model) {
       return res.status(400).json({
-        error: 'Campos obrigatórios ausentes: imei, brand e model são necessários.'
+        error: 'Campos obrigatórios ausentes: brand e model são necessários.'
       });
     }
 
-    // Check unique IMEI
-    const existing = await prisma.mobileDevice.findUnique({
-      where: { imei: imei.trim() },
-    });
+    const imeiValue = typeof imei === 'string' && imei.trim() ? imei.trim() : null;
 
-    if (existing) {
-      return res.status(409).json({ error: 'Já existe um aparelho cadastrado com este IMEI.' });
+    if (imeiValue) {
+      const existing = await prisma.mobileDevice.findUnique({
+        where: { imei: imeiValue },
+      });
+
+      if (existing) {
+        return res.status(409).json({ error: 'Já existe um aparelho cadastrado com este IMEI.' });
+      }
     }
 
     // Validate status if provided
@@ -90,10 +93,11 @@ export const createMobileDevice = async (req: Request, res: Response) => {
 
     const newDevice = await prisma.mobileDevice.create({
       data: {
-        imei: imei.trim(),
+        imei: imeiValue,
         brand: brand.trim(),
         model: model.trim(),
         phoneNumber: phoneNumber?.trim() || null,
+        department: department?.trim() || null,
         status: deviceStatus,
         assignedTo: assignedTo?.trim() || null,
       },
@@ -114,19 +118,22 @@ export const updateMobileDevice = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'ID inválido' });
     }
 
-    const { imei, brand, model, phoneNumber, status, assignedTo } = req.body;
+    const { imei, brand, model, phoneNumber, status, assignedTo, department } = req.body;
 
     const existingDevice = await prisma.mobileDevice.findUnique({ where: { id } });
     if (!existingDevice) {
       return res.status(404).json({ error: 'Aparelho não encontrado' });
     }
 
-    if (imei && imei.trim() !== existingDevice.imei) {
-      const imeiConflict = await prisma.mobileDevice.findUnique({
-        where: { imei: imei.trim() },
-      });
-      if (imeiConflict) {
-        return res.status(409).json({ error: 'Já existe outro aparelho com este IMEI.' });
+    if (imei !== undefined) {
+      const nextImei = typeof imei === 'string' && imei.trim() ? imei.trim() : null;
+      if (nextImei && nextImei !== existingDevice.imei) {
+        const imeiConflict = await prisma.mobileDevice.findUnique({
+          where: { imei: nextImei },
+        });
+        if (imeiConflict) {
+          return res.status(409).json({ error: 'Já existe outro aparelho com este IMEI.' });
+        }
       }
     }
 
@@ -139,10 +146,11 @@ export const updateMobileDevice = async (req: Request, res: Response) => {
     const updated = await prisma.mobileDevice.update({
       where: { id },
       data: {
-        ...(imei !== undefined && { imei: imei.trim() }),
+        ...(imei !== undefined && { imei: typeof imei === 'string' && imei.trim() ? imei.trim() : null }),
         ...(brand !== undefined && { brand: brand.trim() }),
         ...(model !== undefined && { model: model.trim() }),
         ...(phoneNumber !== undefined && { phoneNumber: phoneNumber ? phoneNumber.trim() : null }),
+        ...(department !== undefined && { department: department ? department.trim() : null }),
         ...(status !== undefined && { status }),
         ...(assignedTo !== undefined && { assignedTo: assignedTo ? assignedTo.trim() : null }),
       },

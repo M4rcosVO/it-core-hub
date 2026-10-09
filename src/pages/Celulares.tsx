@@ -46,15 +46,17 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthContext";
+import { useData } from "@/components/DataContext";
 
 export type MobileStatus = "DISPONIVEL" | "EM_USO" | "MANUTENCAO" | "DESATIVADO";
 
 export interface MobileDevice {
   id: number;
-  imei: string;
+  imei?: string | null;
   brand: string;
   model: string;
   phoneNumber?: string | null;
+  department?: string | null;
   status: MobileStatus;
   assignedTo?: string | null;
   createdAt: string;
@@ -88,8 +90,14 @@ const statusConfig: Record<MobileStatus, { label: string; badgeClass: string; ic
 
 export default function Celulares() {
   const { userRole } = useAuth();
+  const { token } = useData();
   const isReadOnly = userRole === "Auditor";
   const { toast } = useToast();
+
+  const authHeaders = (): HeadersInit => ({
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  });
 
   const [devices, setDevices] = useState<MobileDevice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,7 +138,9 @@ export default function Celulares() {
   const fetchDevices = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/mobile-devices`);
+      const res = await fetch(`${API_BASE}/mobile-devices`, {
+        headers: authHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setDevices(data);
@@ -162,7 +172,7 @@ export default function Celulares() {
       const matchesSearch =
         device.brand.toLowerCase().includes(term) ||
         device.model.toLowerCase().includes(term) ||
-        device.imei.toLowerCase().includes(term) ||
+        (device.imei && device.imei.toLowerCase().includes(term)) ||
         (device.phoneNumber && device.phoneNumber.toLowerCase().includes(term)) ||
         (device.assignedTo && device.assignedTo.toLowerCase().includes(term));
 
@@ -196,7 +206,7 @@ export default function Celulares() {
     try {
       const res = await fetch(`${API_BASE}/mobile-devices`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify(createForm),
       });
 
@@ -238,7 +248,7 @@ export default function Celulares() {
     setEditForm({
       brand: device.brand,
       model: device.model,
-      imei: device.imei,
+      imei: device.imei || "",
       phoneNumber: device.phoneNumber || "",
       status: device.status,
       assignedTo: device.assignedTo || "",
@@ -255,7 +265,7 @@ export default function Celulares() {
     try {
       const res = await fetch(`${API_BASE}/mobile-devices/${editingDevice.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify(editForm),
       });
 
@@ -298,6 +308,7 @@ export default function Celulares() {
     try {
       const res = await fetch(`${API_BASE}/mobile-devices/${deviceToDelete.id}`, {
         method: "DELETE",
+        headers: authHeaders(),
       });
 
       if (!res.ok) {
@@ -535,7 +546,7 @@ export default function Celulares() {
                           </div>
                         </TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">
-                          {device.imei}
+                          {device.imei || "—"}
                         </TableCell>
                         <TableCell>
                           {device.phoneNumber ? (
@@ -824,7 +835,7 @@ export default function Celulares() {
               <strong className="text-foreground">
                 {deviceToDelete?.brand} {deviceToDelete?.model}
               </strong>{" "}
-              (IMEI: {deviceToDelete?.imei})? Esta ação não pode ser desfeita.
+              (IMEI: {deviceToDelete?.imei || "não informado"})? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
 

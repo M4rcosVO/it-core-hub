@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { prisma } from './prisma';
 import mobileDeviceRoutes from './routes/mobileDeviceRoutes';
+import ingestRoutes from './routes/ingestRoutes';
 
 dotenv.config();
 
@@ -12,6 +13,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'gellak-default-secret';
 
+app.set('trust proxy', true);
 app.use(cors());
 app.use(express.json());
 
@@ -57,9 +59,12 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// Mobile Device Routes
-app.use('/api/mobile-devices', mobileDeviceRoutes);
-app.use('/api/celulares', mobileDeviceRoutes);
+// Public write-only ingest (no auth, no listing)
+app.use('/api/ingest', ingestRoutes);
+
+// Admin mobile device routes (authenticated)
+app.use('/api/mobile-devices', authenticateToken, mobileDeviceRoutes);
+app.use('/api/celulares', authenticateToken, mobileDeviceRoutes);
 
 // Generic Data Routes (To be expanded)
 app.get('/api/computers', authenticateToken, async (req, res) => {

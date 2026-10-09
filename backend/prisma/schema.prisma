@@ -174,14 +174,19 @@ enum MobileStatus {
 }
 
 model MobileDevice {
-  id          Int          @id @default(autoincrement())
-  imei        String       @unique
-  brand       String
-  model       String
-  phoneNumber String?
-  status      MobileStatus @default(DISPONIVEL)
-  assignedTo  String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id             Int          @id @default(autoincrement())
+  imei           String?      @unique
+  brand          String
+  model          String
+  phoneNumber    String?
+  department     String?
+  status         MobileStatus @default(DISPONIVEL)
+  assignedTo     String?
+  signerIp       String?
+  termAcceptedAt DateTime?
+  osVersion      String?
+  deviceRawModel String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
