@@ -1,8 +1,8 @@
 services:
-  db:
+  it-core-db:
     image: postgres:15-alpine
     container_name: it-core-db
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:-admin}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-GellakIT2026}
@@ -11,13 +11,23 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d it_core_hub"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      default:
+        aliases:
+          - db
+          - it-core-db
 
   backend:
     build: 
       context: ./backend
       dockerfile: Dockerfile
     container_name: it-core-backend
-    restart: always
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
@@ -25,14 +35,15 @@ services:
       JWT_SECRET: ${JWT_SECRET:-super-secret-key-gellak}
       PORT: 3000
     depends_on:
-      - db
+      it-core-db:
+        condition: service_healthy
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: it-core-frontend
-    restart: always
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:

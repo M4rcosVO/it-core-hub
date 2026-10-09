@@ -1,9 +1,21 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { ingestMobileDevice } from '../controllers/ingestController';
 
 const router = Router();
 
-// Write-only public ingestion. No GET/list/read of existing records.
-router.post('/mobile-device', ingestMobileDevice);
+// Rate limit: máximo 15 requisições por IP a cada 15 minutos
+const ingestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Muitas tentativas a partir deste endereço IP. Tente novamente mais tarde.',
+  },
+});
+
+// Write-only public ingestion protegido por rate limiting
+router.post('/mobile-device', ingestLimiter, ingestMobileDevice);
 
 export default router;

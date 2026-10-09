@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../prisma';
 import { MobileStatus } from '@prisma/client';
+import { encryptPassword, decryptPassword } from '../utils/crypto';
 
 export const getAllMobileDevices = async (req: Request, res: Response) => {
   try {
@@ -27,6 +28,11 @@ export const getAllMobileDevices = async (req: Request, res: Response) => {
 
     const devices = await prisma.mobileDevice.findMany({
       where: whereClause,
+      include: {
+        assignmentHistory: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -47,6 +53,11 @@ export const getMobileDeviceById = async (req: Request, res: Response) => {
 
     const device = await prisma.mobileDevice.findUnique({
       where: { id },
+      include: {
+        assignmentHistory: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
     });
 
     if (!device) {
@@ -57,6 +68,138 @@ export const getMobileDeviceById = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error fetching mobile device by id:', error);
     res.status(500).json({ error: 'Erro ao buscar aparelho', details: error.message });
+  }
+};
+
+/**
+ * Descriptografa e retorna credenciais sob demanda para equipe de T.I autenticada
+ */
+export const getDeviceCredentials = async (req: Request, res: Response) => {
+  try {
+    const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const id = parseInt(rawId, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+
+    const device = await prisma.mobileDevice.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        deviceEmail: true,
+        deviceEmailPassword: true,
+      },
+    });
+
+    if (!device) {
+      return res.status(404).json({ error: 'Aparelho não encontrado' });
+    }
+
+    const plainPassword = device.deviceEmailPassword ? decryptPassword(device.deviceEmailPassword) : null;
+
+    res.json({
+      id: device.id,
+      deviceEmail: device.deviceEmail,
+      deviceEmailPassword: plainPassword,
+    });
+  } catch (error: any) {
+    console.error('Error retrieving credentials:', error);
+    res.status(500).json({ error: 'Erro ao recuperar credenciais', details: error.message });
+  }
+};
+
+/**
+ * Retorna o histórico de custódia do aparelho
+ */
+export const getDeviceAssignmentHistory = async (req: Request, res: Response) => {
+  try {
+    const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const id = parseInt(rawId, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+
+    const history = await prisma.deviceAssignmentHistory.findMany({
+      where: { deviceId: id },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(history);
+  } catch (error: any) {
+    console.error('Error fetching assignment history:', error);
+    res.status(500).json({ error: 'Erro ao buscar histórico de custódia', details: error.message });
+  }
+};
+
+/**
+ * Registra a devolução formal de um aparelho, arquivando no histórico de custódia
+ */
+export const registerDeviceReturn = async (req: Request, res: Response) => {
+  try {
+    const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const id = parseInt(rawId, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
+
+    const { returnCondition, returnNotes, targetStatus } = req.body;
+
+    const device = await prisma.mobileDevice.findUnique({
+      where: { id },
+    });
+
+    if (!device) {
+      return res.status(404).json({ error: 'Aparelho não encontrado' });
+    }
+
+    const now = new Date();
+
+    // Se havia um colaborador vinculado, cria o registro histórico
+    if (device.assignedTo) {
+      await prisma.deviceAssignmentHistory.create({
+        data: {
+          deviceId: device.id,
+          assignedTo: device.assignedTo,
+          cpf: device.cpf,
+          department: device.department || 'Desconhecido',
+          phoneNumber: device.phoneNumber || '',
+          signerIp: device.signerIp,
+          termAcceptedAt: device.termAcceptedAt || device.createdAt,
+          returnedAt: now,
+          returnCondition: returnCondition || 'Devolvido à T.I',
+        },
+      });
+    }
+
+    const newStatus =
+      targetStatus && Object.values(MobileStatus).includes(targetStatus)
+        ? (targetStatus as MobileStatus)
+        : MobileStatus.DISPONIVEL;
+
+    const updated = await prisma.mobileDevice.update({
+      where: { id },
+      data: {
+        assignedTo: null,
+        cpf: null,
+        signerIp: null,
+        termAcceptedAt: null,
+        status: newStatus,
+        returnNotes: returnNotes || device.returnNotes,
+      },
+      include: {
+        assignmentHistory: {
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    res.json({
+      message: 'Devolução registrada com sucesso.',
+      device: updated,
+    });
+  } catch (error: any) {
+    console.error('Error registering device return:', error);
+    res.status(500).json({ error: 'Erro ao registrar devolução', details: error.message });
   }
 };
 
@@ -74,6 +217,11 @@ export const createMobileDevice = async (req: Request, res: Response) => {
       deviceEmail,
       deviceEmailPassword,
       inPulsus,
+      hasCharger,
+      hasCable,
+      hasCase,
+      hasScreenProtector,
+      returnNotes,
     } = req.body;
 
     if (!brand || !model) {
@@ -111,6 +259,9 @@ export const createMobileDevice = async (req: Request, res: Response) => {
       }
     }
 
+    // Criptografar senha do e-mail corporativo com AES-256
+    const encryptedPassword = deviceEmailPassword?.trim() ? encryptPassword(deviceEmailPassword.trim()) : null;
+
     const newDevice = await prisma.mobileDevice.create({
       data: {
         imei: imeiValue,
@@ -122,8 +273,16 @@ export const createMobileDevice = async (req: Request, res: Response) => {
         assignedTo: assignedTo?.trim() || null,
         cpf: cpf?.trim() || null,
         deviceEmail: deviceEmail?.trim() || null,
-        deviceEmailPassword: deviceEmailPassword?.trim() || null,
+        deviceEmailPassword: encryptedPassword,
         inPulsus: inPulsus === true || inPulsus === 'true',
+        hasCharger: hasCharger !== undefined ? Boolean(hasCharger) : true,
+        hasCable: hasCable !== undefined ? Boolean(hasCable) : true,
+        hasCase: hasCase !== undefined ? Boolean(hasCase) : false,
+        hasScreenProtector: hasScreenProtector !== undefined ? Boolean(hasScreenProtector) : false,
+        returnNotes: returnNotes?.trim() || null,
+      },
+      include: {
+        assignmentHistory: true,
       },
     });
 
@@ -154,6 +313,11 @@ export const updateMobileDevice = async (req: Request, res: Response) => {
       deviceEmail,
       deviceEmailPassword,
       inPulsus,
+      hasCharger,
+      hasCable,
+      hasCase,
+      hasScreenProtector,
+      returnNotes,
     } = req.body;
 
     const existingDevice = await prisma.mobileDevice.findUnique({ where: { id } });
@@ -184,6 +348,38 @@ export const updateMobileDevice = async (req: Request, res: Response) => {
       });
     }
 
+    // Se houve mudança de colaborador responsável, arquivar histórico
+    const nextAssignedTo = assignedTo !== undefined ? (assignedTo ? assignedTo.trim() : null) : existingDevice.assignedTo;
+    const nextCpf = cpf !== undefined ? (cpf ? cpf.trim() : null) : existingDevice.cpf;
+
+    const isReassigned =
+      existingDevice.assignedTo &&
+      nextAssignedTo &&
+      (existingDevice.assignedTo.trim().toLowerCase() !== nextAssignedTo.toLowerCase() ||
+        (existingDevice.cpf && nextCpf && existingDevice.cpf.trim() !== nextCpf));
+
+    if (isReassigned) {
+      await prisma.deviceAssignmentHistory.create({
+        data: {
+          deviceId: existingDevice.id,
+          assignedTo: existingDevice.assignedTo!,
+          cpf: existingDevice.cpf,
+          department: existingDevice.department || 'Desconhecido',
+          phoneNumber: existingDevice.phoneNumber || '',
+          signerIp: existingDevice.signerIp,
+          termAcceptedAt: existingDevice.termAcceptedAt || existingDevice.createdAt,
+          returnedAt: new Date(),
+          returnCondition: 'Reatribuição Manual pela Equipe de T.I',
+        },
+      });
+    }
+
+    // Tratamento de criptografia da senha se informada nova senha
+    let encryptedPassword = undefined;
+    if (deviceEmailPassword !== undefined) {
+      encryptedPassword = deviceEmailPassword ? encryptPassword(deviceEmailPassword.trim()) : null;
+    }
+
     const updated = await prisma.mobileDevice.update({
       where: { id },
       data: {
@@ -193,11 +389,21 @@ export const updateMobileDevice = async (req: Request, res: Response) => {
         ...(phoneNumber !== undefined && { phoneNumber: phoneNumber ? phoneNumber.trim() : null }),
         ...(department !== undefined && { department: department ? department.trim() : null }),
         ...(status !== undefined && { status }),
-        ...(assignedTo !== undefined && { assignedTo: assignedTo ? assignedTo.trim() : null }),
-        ...(cpf !== undefined && { cpf: cpf ? cpf.trim() : null }),
+        ...(assignedTo !== undefined && { assignedTo: nextAssignedTo }),
+        ...(cpf !== undefined && { cpf: nextCpf }),
         ...(deviceEmail !== undefined && { deviceEmail: deviceEmail ? deviceEmail.trim() : null }),
-        ...(deviceEmailPassword !== undefined && { deviceEmailPassword: deviceEmailPassword ? deviceEmailPassword.trim() : null }),
+        ...(encryptedPassword !== undefined && { deviceEmailPassword: encryptedPassword }),
         ...(inPulsus !== undefined && { inPulsus: inPulsus === true || inPulsus === 'true' }),
+        ...(hasCharger !== undefined && { hasCharger: Boolean(hasCharger) }),
+        ...(hasCable !== undefined && { hasCable: Boolean(hasCable) }),
+        ...(hasCase !== undefined && { hasCase: Boolean(hasCase) }),
+        ...(hasScreenProtector !== undefined && { hasScreenProtector: Boolean(hasScreenProtector) }),
+        ...(returnNotes !== undefined && { returnNotes: returnNotes ? returnNotes.trim() : null }),
+      },
+      include: {
+        assignmentHistory: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -252,6 +458,11 @@ export const exportMobileDevices = async (req: Request, res: Response) => {
       'Responsavel',
       'CPF',
       'Setor',
+      'Carregador',
+      'Cabo',
+      'Capa',
+      'Pelicula',
+      'Obs Devolucao',
       'IP Signatario',
       'Termo Aceito Em (UTC)',
       'Criado Em',
@@ -279,6 +490,11 @@ export const exportMobileDevices = async (req: Request, res: Response) => {
         escapeCsv(d.assignedTo || ''),
         escapeCsv(d.cpf || ''),
         escapeCsv(d.department || ''),
+        escapeCsv(d.hasCharger ? 'Sim' : 'Não'),
+        escapeCsv(d.hasCable ? 'Sim' : 'Não'),
+        escapeCsv(d.hasCase ? 'Sim' : 'Não'),
+        escapeCsv(d.hasScreenProtector ? 'Sim' : 'Não'),
+        escapeCsv(d.returnNotes || ''),
         escapeCsv(d.signerIp || ''),
         escapeCsv(d.termAcceptedAt ? d.termAcceptedAt.toISOString() : ''),
         escapeCsv(d.createdAt ? d.createdAt.toISOString() : ''),
@@ -286,7 +502,6 @@ export const exportMobileDevices = async (req: Request, res: Response) => {
       ].join(';')
     );
 
-    // UTF-8 BOM so Excel opens accents correctly
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\r\n');
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');

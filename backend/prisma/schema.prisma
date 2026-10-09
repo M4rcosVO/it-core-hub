@@ -171,26 +171,48 @@ enum MobileStatus {
   EM_USO
   MANUTENCAO
   DESATIVADO
+  EXTRAVIADO_ROUBADO
 }
 
 model MobileDevice {
-  id             Int          @id @default(autoincrement())
-  imei           String?      @unique
-  brand          String
-  model          String
-  phoneNumber    String?
-  department     String?
-  status         MobileStatus @default(DISPONIVEL)
-  assignedTo     String?
-  cpf            String?
-  signerIp       String?
-  termAcceptedAt DateTime?
+  id                  Int                       @id @default(autoincrement())
+  imei                String?                   @unique
+  brand               String
+  model               String
+  phoneNumber         String?
+  department          String?
+  status              MobileStatus              @default(DISPONIVEL)
+  assignedTo          String?
+  cpf                 String?
+  signerIp            String?
+  termAcceptedAt      DateTime?
   osVersion           String?
   deviceRawModel      String?
   deviceEmail         String?
   deviceEmailPassword String?
-  inPulsus            Boolean      @default(false)
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  inPulsus            Boolean                   @default(false)
+  hasCharger          Boolean                   @default(true)
+  hasCable            Boolean                   @default(true)
+  hasCase             Boolean                   @default(false)
+  hasScreenProtector  Boolean                   @default(false)
+  returnNotes         String?
+  assignmentHistory   DeviceAssignmentHistory[]
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+}
+
+model DeviceAssignmentHistory {
+  id              Int          @id @default(autoincrement())
+  deviceId        Int
+  device          MobileDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  assignedTo      String
+  cpf             String?
+  department      String
+  phoneNumber     String
+  signerIp        String?
+  termAcceptedAt  DateTime
+  returnedAt      DateTime?
+  returnCondition String?     // ex: "Perfeito estado", "Tela trincada", "Sem carregador"
+  createdAt       DateTime     @default(now())
 }
 

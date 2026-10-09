@@ -90,15 +90,20 @@ async function detectDevice(): Promise<DetectedDevice> {
 const RESPONSIBILITY_TERM = `TERMO DE RESPONSABILIDADE E AUDITORIA LEGAL — APARELHO CORPORATIVO
 (Lei nº 14.063/2020 e Art. 462, § 1º da CLT)
 
-1. IDENTIFICAÇÃO E RECEBIMENTO
-O colaborador abaixo qualificado e identificado por Nome Completo e CPF declara ter recebido da empresa, em perfeito estado de conservação e pleno funcionamento, o aparelho celular corporativo e linha telefônica identificados tecnicamente neste formulário.
+1. IDENTIFICAÇÃO E RECEBIMENTO DE BENS E ACESSÓRIOS
+O colaborador abaixo qualificado e identificado por Nome Completo e CPF declara ter recebido da empresa, em perfeito estado de conservação, limpeza e pleno funcionamento, o conjunto corporativo composto por:
+- Aparelho celular corporativo e linha móvel identificados tecnicamente neste formulário;
+- Carregador de parede padrão homologado e funcional;
+- Cabo de sincronização e alimentação USB original ou de qualidade equivalente;
+- Acessórios de proteção instalados (capa de proteção e película protetora de tela, quando aplicável).
+O colaborador atesta que todos os itens encontram-se íntegros, sem avarias, trincas ou defeitos aparentes no ato da entrega.
 
 2. FINALIDADE EXCLUSIVA DE TRABALHO
 O equipamento, seus acessórios e a linha telefônica destinam-se exclusivamente à execução de atividades e comunicações corporativas da empresa, sendo terminantemente proibida a cessão, empréstimo a terceiros ou utilização incompatível com a política interna de segurança.
 
 3. RESPONSABILIDADE CIVIL, ADMINISTRATIVA E RESSARCIMENTO
 O colaborador declara ciência de que tem o dever de guarda, cuidado e zelo pelo patrimônio da empresa. Fica expressamente pactuado que:
-a) Danos decorrentes de dolo, culpa, negligência, imprudência ou mau uso implicarão na obrigação de integral ressarcimento financeiro dos custos de reparo ou reposição do bem à empresa, nos termos do art. 462, § 1º da CLT.
+a) Danos decorrentes de dolo, culpa, negligência, imprudência ou mau uso implicarão na obrigação de integral ressarcimento financeiro dos custos de reparo ou reposição do bem e seus respectivos acessórios à empresa, nos termos do art. 462, § 1º da CLT.
 b) Em caso de perda, roubo ou furto, o colaborador deverá comunicar imediatamente o departamento de T.I. para bloqueio remoto e lavrar o respectivo Boletim de Ocorrência (B.O.).
 c) A recusa na devolução ou danos injustificados ensejarão as sanções administrativas cabíveis e eventuais medidas judiciais de reparação civil e criminal.
 

@@ -43,7 +43,29 @@ export const ingestMobileDevice = async (req: Request, res: Response) => {
     }
 
     if (existing) {
-      const updated = await prisma.mobileDevice.update({
+      // Se já pertencia a outro colaborador, arquiva no histórico de custódia
+      const isReassignment =
+        existing.assignedTo &&
+        (existing.assignedTo.trim().toLowerCase() !== assignedToValue.trim().toLowerCase() ||
+          (existing.cpf && cpfValue && existing.cpf.trim() !== cpfValue.trim()));
+
+      if (isReassignment) {
+        await prisma.deviceAssignmentHistory.create({
+          data: {
+            deviceId: existing.id,
+            assignedTo: existing.assignedTo!,
+            cpf: existing.cpf,
+            department: existing.department || 'Desconhecido',
+            phoneNumber: existing.phoneNumber || '',
+            signerIp: existing.signerIp,
+            termAcceptedAt: existing.termAcceptedAt || existing.createdAt,
+            returnedAt: now,
+            returnCondition: 'Reatribuição / Transferência via Coleta Satélite',
+          },
+        });
+      }
+
+      await prisma.mobileDevice.update({
         where: { id: existing.id },
         data: {
           assignedTo: assignedToValue,
@@ -59,13 +81,13 @@ export const ingestMobileDevice = async (req: Request, res: Response) => {
         },
       });
 
+      // Retorno LGPD/Privacidade estrita: apenas confirmação sem expor dados internos
       return res.status(200).json({
         success: true,
-        message: 'Aparelho atualizado com sucesso.',
-        device: updated,
+        message: 'Aparelho vinculado com sucesso.',
       });
     } else {
-      const created = await prisma.mobileDevice.create({
+      await prisma.mobileDevice.create({
         data: {
           assignedTo: assignedToValue,
           cpf: cpfValue,
@@ -85,7 +107,6 @@ export const ingestMobileDevice = async (req: Request, res: Response) => {
       return res.status(201).json({
         success: true,
         message: 'Aparelho vinculado com sucesso.',
-        device: created,
       });
     }
   } catch (error: any) {
