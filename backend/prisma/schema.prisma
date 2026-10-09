@@ -185,9 +185,12 @@ model MobileDevice {
   cpf            String?
   signerIp       String?
   termAcceptedAt DateTime?
-  osVersion      String?
-  deviceRawModel String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  osVersion           String?
+  deviceRawModel      String?
+  deviceEmail         String?
+  deviceEmailPassword String?
+  inPulsus            Boolean      @default(false)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 }
 

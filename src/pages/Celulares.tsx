@@ -22,13 +22,19 @@ import {
   Printer,
   ExternalLink,
   ShieldCheck,
-  Building2,
   IdCard,
+  Mail,
+  Key,
+  Eye,
+  EyeOff,
+  Radio,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableHeader,
@@ -56,6 +62,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthContext";
 import { useData } from "@/components/DataContext";
 import { DEPARTMENTS } from "@/constants/departments";
+import { formatBrazilianMobile, validateBrazilianMobile } from "@/utils/phone";
 
 export type MobileStatus = "DISPONIVEL" | "EM_USO" | "MANUTENCAO" | "DESATIVADO";
 
@@ -73,6 +80,9 @@ export interface MobileDevice {
   termAcceptedAt?: string | null;
   osVersion?: string | null;
   deviceRawModel?: string | null;
+  deviceEmail?: string | null;
+  deviceEmailPassword?: string | null;
+  inPulsus?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -128,7 +138,7 @@ export default function Celulares() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("TODOS");
 
-  // Modais
+  // Create Form State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     brand: "",
@@ -139,9 +149,14 @@ export default function Celulares() {
     assignedTo: "",
     cpf: "",
     department: "",
+    deviceEmail: "",
+    deviceEmailPassword: "",
+    inPulsus: false,
   });
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [submittingCreate, setSubmittingCreate] = useState(false);
 
+  // Edit Form State
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<MobileDevice | null>(null);
   const [editForm, setEditForm] = useState({
@@ -153,9 +168,14 @@ export default function Celulares() {
     assignedTo: "",
     cpf: "",
     department: "",
+    deviceEmail: "",
+    deviceEmailPassword: "",
+    inPulsus: false,
   });
+  const [showEditPassword, setShowEditPassword] = useState(false);
   const [submittingEdit, setSubmittingEdit] = useState(false);
 
+  // Delete State
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<MobileDevice | null>(null);
   const [submittingDelete, setSubmittingDelete] = useState(false);
@@ -166,10 +186,15 @@ export default function Celulares() {
   // Dossiê / Ver Termo Modal
   const [isDossierOpen, setIsDossierOpen] = useState(false);
   const [dossierDevice, setDossierDevice] = useState<MobileDevice | null>(null);
+  const [showDossierPassword, setShowDossierPassword] = useState(false);
 
   const printableRef = useRef<HTMLDivElement>(null);
-
   const satelliteUrl = `${window.location.origin}/coleta-aparelho`;
+
+  // Sorted departments list
+  const sortedDepartments = useMemo(() => {
+    return [...DEPARTMENTS].sort((a, b) => a.localeCompare("pt-BR"));
+  }, []);
 
   // Fetch devices
   const fetchDevices = async () => {
@@ -222,7 +247,8 @@ export default function Celulares() {
         (device.phoneNumber && device.phoneNumber.toLowerCase().includes(term)) ||
         (device.assignedTo && device.assignedTo.toLowerCase().includes(term)) ||
         (device.cpf && device.cpf.toLowerCase().includes(term)) ||
-        (device.department && device.department.toLowerCase().includes(term));
+        (device.department && device.department.toLowerCase().includes(term)) ||
+        (device.deviceEmail && device.deviceEmail.toLowerCase().includes(term));
 
       return matchesStatus && matchesSearch;
     });
@@ -235,6 +261,7 @@ export default function Celulares() {
       emUso: devices.filter((d) => d.status === "EM_USO").length,
       disponivel: devices.filter((d) => d.status === "DISPONIVEL").length,
       manutencao: devices.filter((d) => d.status === "MANUTENCAO").length,
+      pulsus: devices.filter((d) => d.inPulsus).length,
     };
   }, [devices]);
 
@@ -279,13 +306,34 @@ export default function Celulares() {
     }
   };
 
-  // Handle Create
+  // Handle Create Submit
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!createForm.brand.trim() || !createForm.model.trim()) {
       toast({
         title: "Campos obrigatórios",
         description: "Marca e Modelo são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // IMEI Obrigatório
+    if (!createForm.imei.trim()) {
+      toast({
+        title: "IMEI Obrigatório",
+        description: "O campo IMEI é obrigatório no cadastro pela equipe de T.I.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validação estrita de celular caso informado
+    if (createForm.phoneNumber.trim() && !validateBrazilianMobile(createForm.phoneNumber)) {
+      toast({
+        title: "Celular Inválido",
+        description: "Informe um número de celular corporativo válido com 11 dígitos (DDD + 9XXXX-XXXX).",
         variant: "destructive",
       });
       return;
@@ -324,6 +372,9 @@ export default function Celulares() {
         assignedTo: "",
         cpf: "",
         department: "",
+        deviceEmail: "",
+        deviceEmailPassword: "",
+        inPulsus: false,
       });
 
       toast({
@@ -353,7 +404,11 @@ export default function Celulares() {
       assignedTo: device.assignedTo || "",
       cpf: device.cpf || "",
       department: device.department || "",
+      deviceEmail: device.deviceEmail || "",
+      deviceEmailPassword: device.deviceEmailPassword || "",
+      inPulsus: device.inPulsus || false,
     });
+    setShowEditPassword(false);
     setIsEditOpen(true);
   };
 
@@ -361,6 +416,26 @@ export default function Celulares() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingDevice) return;
+
+    // IMEI Obrigatório
+    if (!editForm.imei.trim()) {
+      toast({
+        title: "IMEI Obrigatório",
+        description: "O campo IMEI é obrigatório no cadastro pela equipe de T.I.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validação estrita de celular
+    if (editForm.phoneNumber.trim() && !validateBrazilianMobile(editForm.phoneNumber)) {
+      toast({
+        title: "Celular Inválido",
+        description: "Informe um número de celular corporativo válido com 11 dígitos (DDD + 9XXXX-XXXX).",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setSubmittingEdit(true);
     try {
@@ -454,6 +529,7 @@ export default function Celulares() {
   // Open Dossier
   const openDossier = (device: MobileDevice) => {
     setDossierDevice(device);
+    setShowDossierPassword(false);
     setIsDossierOpen(true);
   };
 
@@ -480,10 +556,10 @@ export default function Celulares() {
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                Gestão de Celulares
+                Gestão de Celulares & MDM
               </h1>
               <p className="text-sm text-muted-foreground">
-                Inventário móvel, linhas telefônicas e auditoria legal de termos de entrega
+                Inventário móvel, controle de linhas corporativas, Pulsus MDM e auditoria jurídica
               </p>
             </div>
           </div>
@@ -535,7 +611,7 @@ export default function Celulares() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -561,6 +637,21 @@ export default function Celulares() {
               {stats.emUso}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Atribuídos a colaboradores</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Pulsus MDM
+            </CardTitle>
+            <Radio className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+              {stats.pulsus}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Gerenciados ativamente</p>
           </CardContent>
         </Card>
 
@@ -604,7 +695,7 @@ export default function Celulares() {
                 Inventário Geral de Telefonia & Termos
               </CardTitle>
               <CardDescription className="text-xs">
-                Listagem consolidada com dados de hardware, posse do colaborador e auditoria jurídica
+                Listagem consolidada com dados de hardware, posse do colaborador, gestão Pulsus e auditoria jurídica
               </CardDescription>
             </div>
 
@@ -613,7 +704,7 @@ export default function Celulares() {
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar modelo, CPF, linha, setor..."
+                  placeholder="Buscar modelo, CPF, linha, e-mail..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9 h-9 bg-background/50"
@@ -628,10 +719,13 @@ export default function Celulares() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="TODOS">Todos os Status</SelectItem>
-                    <SelectItem value="DISPONIVEL">Disponível</SelectItem>
-                    <SelectItem value="EM_USO">Em Uso</SelectItem>
-                    <SelectItem value="MANUTENCAO">Manutenção</SelectItem>
-                    <SelectItem value="DESATIVADO">Desativado</SelectItem>
+                    {["DISPONIVEL", "EM_USO", "MANUTENCAO", "DESATIVADO"]
+                      .sort((a, b) => statusConfig[a as MobileStatus].label.localeCompare(statusConfig[b as MobileStatus].label, "pt-BR"))
+                      .map((st) => (
+                        <SelectItem key={st} value={st}>
+                          {statusConfig[st as MobileStatus].label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -646,17 +740,18 @@ export default function Celulares() {
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead className="w-[180px]">Marca & Modelo</TableHead>
                   <TableHead className="w-[140px]">Número da Linha</TableHead>
-                  <TableHead className="w-[220px]">Colaborador & CPF</TableHead>
-                  <TableHead className="w-[140px]">Setor</TableHead>
-                  <TableHead className="w-[120px]">Status</TableHead>
-                  <TableHead className="w-[110px]">Auditoria</TableHead>
-                  <TableHead className="w-[110px] text-right">Ações</TableHead>
+                  <TableHead className="w-[200px]">Colaborador & CPF</TableHead>
+                  <TableHead className="w-[130px]">Setor</TableHead>
+                  <TableHead className="w-[110px]">MDM Pulsus</TableHead>
+                  <TableHead className="w-[110px]">Status</TableHead>
+                  <TableHead className="w-[90px]">Auditoria</TableHead>
+                  <TableHead className="w-[100px] text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center">
+                    <TableCell colSpan={8} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                         <RefreshCw className="h-6 w-6 animate-spin text-primary" />
                         <span>Carregando inventário móvel...</span>
@@ -665,7 +760,7 @@ export default function Celulares() {
                   </TableRow>
                 ) : filteredDevices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center">
+                    <TableCell colSpan={8} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                         <Smartphone className="h-8 w-8 text-muted-foreground/50" />
                         <span className="font-medium">Nenhum aparelho encontrado</span>
@@ -735,6 +830,19 @@ export default function Celulares() {
                             </Badge>
                           ) : (
                             <span className="text-xs text-muted-foreground/50">—</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {device.inPulsus ? (
+                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-medium gap-1">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Pulsus Ativo
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-zinc-500 border-zinc-500/30 text-[11px] font-normal">
+                              Sem MDM
+                            </Badge>
                           )}
                         </TableCell>
 
@@ -874,14 +982,14 @@ export default function Celulares() {
 
       {/* Modal: Dossiê / Ver Termo */}
       <Dialog open={isDossierOpen} onOpenChange={setIsDossierOpen}>
-        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-primary">
               <ShieldCheck className="h-5 w-5 text-emerald-500" />
               Dossiê & Termo de Posse do Dispositivo
             </DialogTitle>
             <DialogDescription>
-              Documento comprobatório de entrega com validade jurídica (Lei 14.063/2020).
+              Documento comprobatório de entrega com validade jurídica (Lei 14.063/2020) e dados de inventário.
             </DialogDescription>
           </DialogHeader>
 
@@ -893,9 +1001,16 @@ export default function Celulares() {
                   <div className="font-bold text-base tracking-tight text-foreground">
                     GELLAK IT CORE — TERMO Nº #{dossierDevice.id.toString().padStart(5, "0")}
                   </div>
-                  <Badge variant="outline" className="text-xs">
-                    {dossierDevice.status}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {dossierDevice.inPulsus && (
+                      <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[11px]">
+                        Pulsus MDM Ativo
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="text-xs">
+                      {dossierDevice.status}
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
@@ -947,7 +1062,51 @@ export default function Celulares() {
                   </div>
                   <div>
                     <span className="text-muted-foreground block">IMEI:</span>
-                    <span className="font-mono text-foreground">{dossierDevice.imei || "Não informado"}</span>
+                    <span className="font-mono text-foreground font-semibold">{dossierDevice.imei || "Não informado"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* MDM & Device Credentials Box */}
+              <div className="border border-blue-500/30 rounded-xl p-4 bg-blue-500/5 space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                  <Mail className="h-4 w-4" />
+                  Credenciais e Gerenciamento Corporativo
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                  <div>
+                    <span className="text-muted-foreground block">E-mail do Aparelho:</span>
+                    <span className="font-medium font-mono text-foreground">
+                      {dossierDevice.deviceEmail || "Nenhum e-mail vinculado"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block">Senha do E-mail:</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-mono font-medium text-foreground">
+                        {dossierDevice.deviceEmailPassword
+                          ? showDossierPassword
+                            ? dossierDevice.deviceEmailPassword
+                            : "••••••••••••"
+                          : "Não cadastrada"}
+                      </span>
+                      {dossierDevice.deviceEmailPassword && (
+                        <button
+                          type="button"
+                          onClick={() => setShowDossierPassword(!showDossierPassword)}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Mostrar/Ocultar"
+                        >
+                          {showDossierPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block">Gerenciamento Pulsus MDM:</span>
+                    <span className="font-medium text-foreground">
+                      {dossierDevice.inPulsus ? "Sim (Dispositivo Gerenciado)" : "Não"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -995,14 +1154,14 @@ export default function Celulares() {
 
       {/* Modal: Cadastro de Novo Celular */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[540px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Smartphone className="h-5 w-5 text-primary" />
               Cadastrar Novo Celular
             </DialogTitle>
             <DialogDescription>
-              Cadastre manualmente um aparelho ou linha corporativa no inventário.
+              Cadastre manualmente um aparelho ou linha corporativa no inventário da T.I.
             </DialogDescription>
           </DialogHeader>
 
@@ -1031,11 +1190,12 @@ export default function Celulares() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">IMEI (15 dígitos)</label>
+                <label className="text-xs font-semibold text-foreground">IMEI (15 dígitos) *</label>
                 <Input
                   placeholder="Ex: 356938035643809"
                   value={createForm.imei}
                   onChange={(e) => setCreateForm({ ...createForm, imei: e.target.value })}
+                  required
                   className="font-mono text-xs"
                 />
               </div>
@@ -1045,8 +1205,9 @@ export default function Celulares() {
                 <Input
                   placeholder="Ex: (31) 98888-7777"
                   value={createForm.phoneNumber}
-                  onChange={(e) => setCreateForm({ ...createForm, phoneNumber: e.target.value })}
+                  onChange={(e) => setCreateForm({ ...createForm, phoneNumber: formatBrazilianMobile(e.target.value) })}
                   className="font-mono text-xs"
+                  maxLength={15}
                 />
               </div>
             </div>
@@ -1082,7 +1243,7 @@ export default function Celulares() {
                     <SelectValue placeholder="Selecione o setor" />
                   </SelectTrigger>
                   <SelectContent className="max-h-56">
-                    {DEPARTMENTS.map((dept) => (
+                    {sortedDepartments.map((dept) => (
                       <SelectItem key={dept} value={dept}>
                         {dept}
                       </SelectItem>
@@ -1116,6 +1277,59 @@ export default function Celulares() {
               </div>
             </div>
 
+            {/* Campos MDM & E-mail */}
+            <div className="border border-border/80 rounded-lg p-3 bg-muted/20 space-y-3">
+              <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-primary" />
+                Configurações Corporativas & MDM
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">E-mail do Aparelho</label>
+                  <Input
+                    type="email"
+                    placeholder="operacao.gellak@gmail.com"
+                    value={createForm.deviceEmail}
+                    onChange={(e) => setCreateForm({ ...createForm, deviceEmail: e.target.value })}
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Senha do E-mail</label>
+                  <div className="relative">
+                    <Input
+                      type={showCreatePassword ? "text" : "password"}
+                      placeholder="••••••••••••"
+                      value={createForm.deviceEmailPassword}
+                      onChange={(e) => setCreateForm({ ...createForm, deviceEmailPassword: e.target.value })}
+                      className="pr-9 text-xs font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCreatePassword(!showCreatePassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showCreatePassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <Label htmlFor="create-inPulsus" className="text-xs font-medium cursor-pointer">
+                  Dispositivo gerenciado no Pulsus MDM
+                </Label>
+                <Switch
+                  id="create-inPulsus"
+                  checked={createForm.inPulsus}
+                  onCheckedChange={(val) => setCreateForm({ ...createForm, inPulsus: val })}
+                />
+              </div>
+            </div>
+
             <DialogFooter className="pt-2">
               <Button
                 type="button"
@@ -1135,14 +1349,14 @@ export default function Celulares() {
 
       {/* Modal: Edição de Celular */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[540px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit2 className="h-5 w-5 text-primary" />
               Editar Celular
             </DialogTitle>
             <DialogDescription>
-              Atualize as informações de patrimônio, setor e titularidade da linha.
+              Atualize as informações de patrimônio, setor, credenciais e gerenciamento MDM.
             </DialogDescription>
           </DialogHeader>
 
@@ -1169,10 +1383,11 @@ export default function Celulares() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">IMEI</label>
+                <label className="text-xs font-semibold text-foreground">IMEI (15 dígitos) *</label>
                 <Input
                   value={editForm.imei}
                   onChange={(e) => setEditForm({ ...editForm, imei: e.target.value })}
+                  required
                   className="font-mono text-xs"
                 />
               </div>
@@ -1181,8 +1396,9 @@ export default function Celulares() {
                 <label className="text-xs font-semibold text-foreground">Número da Linha</label>
                 <Input
                   value={editForm.phoneNumber}
-                  onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                  onChange={(e) => setEditForm({ ...editForm, phoneNumber: formatBrazilianMobile(e.target.value) })}
                   className="font-mono text-xs"
+                  maxLength={15}
                 />
               </div>
             </div>
@@ -1218,7 +1434,7 @@ export default function Celulares() {
                     <SelectValue placeholder="Selecione o setor" />
                   </SelectTrigger>
                   <SelectContent className="max-h-56">
-                    {DEPARTMENTS.map((dept) => (
+                    {sortedDepartments.map((dept) => (
                       <SelectItem key={dept} value={dept}>
                         {dept}
                       </SelectItem>
@@ -1248,6 +1464,59 @@ export default function Celulares() {
                   placeholder="000.000.000-00"
                   maxLength={14}
                   className="font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Campos MDM & E-mail */}
+            <div className="border border-border/80 rounded-lg p-3 bg-muted/20 space-y-3">
+              <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-primary" />
+                Configurações Corporativas & MDM
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">E-mail do Aparelho</label>
+                  <Input
+                    type="email"
+                    placeholder="operacao.gellak@gmail.com"
+                    value={editForm.deviceEmail}
+                    onChange={(e) => setEditForm({ ...editForm, deviceEmail: e.target.value })}
+                    className="text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Senha do E-mail</label>
+                  <div className="relative">
+                    <Input
+                      type={showEditPassword ? "text" : "password"}
+                      placeholder="••••••••••••"
+                      value={editForm.deviceEmailPassword}
+                      onChange={(e) => setEditForm({ ...editForm, deviceEmailPassword: e.target.value })}
+                      className="pr-9 text-xs font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditPassword(!showEditPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showEditPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <Label htmlFor="edit-inPulsus" className="text-xs font-medium cursor-pointer">
+                  Dispositivo gerenciado no Pulsus MDM
+                </Label>
+                <Switch
+                  id="edit-inPulsus"
+                  checked={editForm.inPulsus}
+                  onCheckedChange={(val) => setEditForm({ ...editForm, inPulsus: val })}
                 />
               </div>
             </div>
@@ -1282,7 +1551,7 @@ export default function Celulares() {
               <strong className="text-foreground">
                 {deviceToDelete?.brand} {deviceToDelete?.model}
               </strong>{" "}
-              (Linha: {deviceToDelete?.phoneNumber || "não informada"})? Esta ação não pode ser desfeita.
+              (IMEI: {deviceToDelete?.imei || "não informado"})? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
 

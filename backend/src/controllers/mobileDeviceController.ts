@@ -21,6 +21,7 @@ export const getAllMobileDevices = async (req: Request, res: Response) => {
         { assignedTo: { contains: search, mode: 'insensitive' } },
         { cpf: { contains: search, mode: 'insensitive' } },
         { department: { contains: search, mode: 'insensitive' } },
+        { deviceEmail: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -61,24 +62,41 @@ export const getMobileDeviceById = async (req: Request, res: Response) => {
 
 export const createMobileDevice = async (req: Request, res: Response) => {
   try {
-    const { imei, brand, model, phoneNumber, status, assignedTo, department, cpf } = req.body;
+    const {
+      imei,
+      brand,
+      model,
+      phoneNumber,
+      status,
+      assignedTo,
+      department,
+      cpf,
+      deviceEmail,
+      deviceEmailPassword,
+      inPulsus,
+    } = req.body;
 
     if (!brand || !model) {
       return res.status(400).json({
-        error: 'Campos obrigatórios ausentes: brand e model são necessários.'
+        error: 'Campos obrigatórios ausentes: brand e model são necessários.',
       });
     }
 
     const imeiValue = typeof imei === 'string' && imei.trim() ? imei.trim() : null;
 
-    if (imeiValue) {
-      const existing = await prisma.mobileDevice.findUnique({
-        where: { imei: imeiValue },
+    // Validação estrita de IMEI obrigatório para cadastro manual da T.I
+    if (!imeiValue) {
+      return res.status(400).json({
+        error: 'O campo IMEI é obrigatório no cadastro pela equipe de T.I.',
       });
+    }
 
-      if (existing) {
-        return res.status(409).json({ error: 'Já existe um aparelho cadastrado com este IMEI.' });
-      }
+    const existing = await prisma.mobileDevice.findUnique({
+      where: { imei: imeiValue },
+    });
+
+    if (existing) {
+      return res.status(409).json({ error: 'Já existe um aparelho cadastrado com este IMEI.' });
     }
 
     // Validate status if provided
@@ -88,7 +106,7 @@ export const createMobileDevice = async (req: Request, res: Response) => {
         deviceStatus = status;
       } else {
         return res.status(400).json({
-          error: `Status inválido. Valores aceitos: ${Object.values(MobileStatus).join(', ')}`
+          error: `Status inválido. Valores aceitos: ${Object.values(MobileStatus).join(', ')}`,
         });
       }
     }
@@ -103,6 +121,9 @@ export const createMobileDevice = async (req: Request, res: Response) => {
         status: deviceStatus,
         assignedTo: assignedTo?.trim() || null,
         cpf: cpf?.trim() || null,
+        deviceEmail: deviceEmail?.trim() || null,
+        deviceEmailPassword: deviceEmailPassword?.trim() || null,
+        inPulsus: inPulsus === true || inPulsus === 'true',
       },
     });
 
@@ -121,7 +142,19 @@ export const updateMobileDevice = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'ID inválido' });
     }
 
-    const { imei, brand, model, phoneNumber, status, assignedTo, department, cpf } = req.body;
+    const {
+      imei,
+      brand,
+      model,
+      phoneNumber,
+      status,
+      assignedTo,
+      department,
+      cpf,
+      deviceEmail,
+      deviceEmailPassword,
+      inPulsus,
+    } = req.body;
 
     const existingDevice = await prisma.mobileDevice.findUnique({ where: { id } });
     if (!existingDevice) {
@@ -130,7 +163,12 @@ export const updateMobileDevice = async (req: Request, res: Response) => {
 
     if (imei !== undefined) {
       const nextImei = typeof imei === 'string' && imei.trim() ? imei.trim() : null;
-      if (nextImei && nextImei !== existingDevice.imei) {
+      if (!nextImei) {
+        return res.status(400).json({
+          error: 'O campo IMEI é obrigatório no cadastro pela equipe de T.I.',
+        });
+      }
+      if (nextImei !== existingDevice.imei) {
         const imeiConflict = await prisma.mobileDevice.findUnique({
           where: { imei: nextImei },
         });
@@ -142,7 +180,7 @@ export const updateMobileDevice = async (req: Request, res: Response) => {
 
     if (status && !Object.values(MobileStatus).includes(status)) {
       return res.status(400).json({
-        error: `Status inválido. Valores aceitos: ${Object.values(MobileStatus).join(', ')}`
+        error: `Status inválido. Valores aceitos: ${Object.values(MobileStatus).join(', ')}`,
       });
     }
 
@@ -157,6 +195,9 @@ export const updateMobileDevice = async (req: Request, res: Response) => {
         ...(status !== undefined && { status }),
         ...(assignedTo !== undefined && { assignedTo: assignedTo ? assignedTo.trim() : null }),
         ...(cpf !== undefined && { cpf: cpf ? cpf.trim() : null }),
+        ...(deviceEmail !== undefined && { deviceEmail: deviceEmail ? deviceEmail.trim() : null }),
+        ...(deviceEmailPassword !== undefined && { deviceEmailPassword: deviceEmailPassword ? deviceEmailPassword.trim() : null }),
+        ...(inPulsus !== undefined && { inPulsus: inPulsus === true || inPulsus === 'true' }),
       },
     });
 
@@ -206,13 +247,15 @@ export const exportMobileDevices = async (req: Request, res: Response) => {
       'IMEI',
       'Telefone',
       'Status',
+      'Pulsus MDM',
+      'Email Aparelho',
       'Responsavel',
       'CPF',
       'Setor',
       'IP Signatario',
       'Termo Aceito Em (UTC)',
       'Criado Em',
-      'Atualizado Em'
+      'Atualizado Em',
     ];
 
     const escapeCsv = (val: any) => {
@@ -221,23 +264,27 @@ export const exportMobileDevices = async (req: Request, res: Response) => {
       return `"${str}"`;
     };
 
-    const rows = devices.map(d => [
-      d.id,
-      escapeCsv(d.brand),
-      escapeCsv(d.model),
-      escapeCsv(d.deviceRawModel || ''),
-      escapeCsv(d.osVersion || ''),
-      escapeCsv(d.imei || ''),
-      escapeCsv(d.phoneNumber || ''),
-      escapeCsv(d.status),
-      escapeCsv(d.assignedTo || ''),
-      escapeCsv(d.cpf || ''),
-      escapeCsv(d.department || ''),
-      escapeCsv(d.signerIp || ''),
-      escapeCsv(d.termAcceptedAt ? d.termAcceptedAt.toISOString() : ''),
-      escapeCsv(d.createdAt ? d.createdAt.toISOString() : ''),
-      escapeCsv(d.updatedAt ? d.updatedAt.toISOString() : '')
-    ].join(';'));
+    const rows = devices.map((d) =>
+      [
+        d.id,
+        escapeCsv(d.brand),
+        escapeCsv(d.model),
+        escapeCsv(d.deviceRawModel || ''),
+        escapeCsv(d.osVersion || ''),
+        escapeCsv(d.imei || ''),
+        escapeCsv(d.phoneNumber || ''),
+        escapeCsv(d.status),
+        escapeCsv(d.inPulsus ? 'Sim' : 'Não'),
+        escapeCsv(d.deviceEmail || ''),
+        escapeCsv(d.assignedTo || ''),
+        escapeCsv(d.cpf || ''),
+        escapeCsv(d.department || ''),
+        escapeCsv(d.signerIp || ''),
+        escapeCsv(d.termAcceptedAt ? d.termAcceptedAt.toISOString() : ''),
+        escapeCsv(d.createdAt ? d.createdAt.toISOString() : ''),
+        escapeCsv(d.updatedAt ? d.updatedAt.toISOString() : ''),
+      ].join(';')
+    );
 
     // UTF-8 BOM so Excel opens accents correctly
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\r\n');
