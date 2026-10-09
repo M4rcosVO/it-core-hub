@@ -5,10 +5,13 @@ import {
   createMobileDevice,
   updateMobileDevice,
   deleteMobileDevice,
+  exportMobileDevices,
 } from '../controllers/mobileDeviceController';
 
 const router = Router();
 
+// Export route must come before /:id to prevent matching 'export' as an id
+router.get('/export', exportMobileDevices);
 router.get('/', getAllMobileDevices);
 router.get('/:id', getMobileDeviceById);
 router.post('/', createMobileDevice);

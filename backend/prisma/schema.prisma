@@ -182,6 +182,7 @@ model MobileDevice {
   department     String?
   status         MobileStatus @default(DISPONIVEL)
   assignedTo     String?
+  cpf            String?
   signerIp       String?
   termAcceptedAt DateTime?
   osVersion      String?

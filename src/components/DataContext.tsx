@@ -77,7 +77,7 @@ type DataContextType = {
 
 const DataContext = createContext<DataContextType | null>(null);
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const API_URL = "/api";
 
 export function DataProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(JSON.parse(localStorage.getItem("it_core_user") || "null"));

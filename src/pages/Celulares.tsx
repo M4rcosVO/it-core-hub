@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import QRCode from "react-qr-code";
 import {
   Smartphone,
   Search,
@@ -8,14 +10,20 @@ import {
   Trash2,
   Phone,
   User,
-  Hash,
-  Tag,
   CheckCircle2,
   Clock,
   Wrench,
   XCircle,
   ShieldAlert,
-  SlidersHorizontal,
+  QrCode,
+  FileText,
+  Download,
+  Copy,
+  Printer,
+  ExternalLink,
+  ShieldCheck,
+  Building2,
+  IdCard,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +55,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthContext";
 import { useData } from "@/components/DataContext";
+import { DEPARTMENTS } from "@/constants/departments";
 
 export type MobileStatus = "DISPONIVEL" | "EM_USO" | "MANUTENCAO" | "DESATIVADO";
 
@@ -59,11 +68,16 @@ export interface MobileDevice {
   department?: string | null;
   status: MobileStatus;
   assignedTo?: string | null;
+  cpf?: string | null;
+  signerIp?: string | null;
+  termAcceptedAt?: string | null;
+  osVersion?: string | null;
+  deviceRawModel?: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const API_BASE = "/api";
 
 const statusConfig: Record<MobileStatus, { label: string; badgeClass: string; icon: React.ElementType }> = {
   DISPONIVEL: {
@@ -88,23 +102,33 @@ const statusConfig: Record<MobileStatus, { label: string; badgeClass: string; ic
   },
 };
 
+const formatCpf = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+};
+
 export default function Celulares() {
+  const navigate = useNavigate();
   const { userRole } = useAuth();
-  const { token } = useData();
+  const dataContext = useData();
   const isReadOnly = userRole === "Auditor";
   const { toast } = useToast();
 
-  const authHeaders = (): HeadersInit => ({
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  });
+  const token =
+    dataContext?.token ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("it_core_token") ||
+    sessionStorage.getItem("token");
 
   const [devices, setDevices] = useState<MobileDevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("TODOS");
 
-  // Create Modal State
+  // Modais
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     brand: "",
@@ -113,10 +137,11 @@ export default function Celulares() {
     phoneNumber: "",
     status: "DISPONIVEL" as MobileStatus,
     assignedTo: "",
+    cpf: "",
+    department: "",
   });
   const [submittingCreate, setSubmittingCreate] = useState(false);
 
-  // Edit Modal State
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<MobileDevice | null>(null);
   const [editForm, setEditForm] = useState({
@@ -126,21 +151,42 @@ export default function Celulares() {
     phoneNumber: "",
     status: "DISPONIVEL" as MobileStatus,
     assignedTo: "",
+    cpf: "",
+    department: "",
   });
   const [submittingEdit, setSubmittingEdit] = useState(false);
 
-  // Delete Dialog State
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<MobileDevice | null>(null);
   const [submittingDelete, setSubmittingDelete] = useState(false);
+
+  // QR Code Modal
+  const [isQrOpen, setIsQrOpen] = useState(false);
+
+  // Dossiê / Ver Termo Modal
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
+  const [dossierDevice, setDossierDevice] = useState<MobileDevice | null>(null);
+
+  const printableRef = useRef<HTMLDivElement>(null);
+
+  const satelliteUrl = `${window.location.origin}/coleta-aparelho`;
 
   // Fetch devices
   const fetchDevices = async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/mobile-devices`, {
-        headers: authHeaders(),
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       });
+
+      if (res.status === 401) {
+        navigate("/login");
+        return;
+      }
+
       if (res.ok) {
         const data = await res.json();
         setDevices(data);
@@ -174,7 +220,9 @@ export default function Celulares() {
         device.model.toLowerCase().includes(term) ||
         (device.imei && device.imei.toLowerCase().includes(term)) ||
         (device.phoneNumber && device.phoneNumber.toLowerCase().includes(term)) ||
-        (device.assignedTo && device.assignedTo.toLowerCase().includes(term));
+        (device.assignedTo && device.assignedTo.toLowerCase().includes(term)) ||
+        (device.cpf && device.cpf.toLowerCase().includes(term)) ||
+        (device.department && device.department.toLowerCase().includes(term));
 
       return matchesStatus && matchesSearch;
     });
@@ -190,13 +238,54 @@ export default function Celulares() {
     };
   }, [devices]);
 
+  // Handle Export CSV
+  const handleExportCsv = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/mobile-devices/export`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (res.status === 401) {
+        navigate("/login");
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error("Erro ao gerar arquivo de exportação.");
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `inventario_celulares_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Exportação realizada",
+        description: "O arquivo CSV foi baixado com sucesso.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Erro na exportação",
+        description: err.message || "Não foi possível exportar os registros.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Handle Create
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!createForm.brand.trim() || !createForm.model.trim() || !createForm.imei.trim()) {
+    if (!createForm.brand.trim() || !createForm.model.trim()) {
       toast({
         title: "Campos obrigatórios",
-        description: "Marca, Modelo e IMEI são obrigatórios.",
+        description: "Marca e Modelo são obrigatórios.",
         variant: "destructive",
       });
       return;
@@ -206,9 +295,17 @@ export default function Celulares() {
     try {
       const res = await fetch(`${API_BASE}/mobile-devices`, {
         method: "POST",
-        headers: authHeaders(),
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(createForm),
       });
+
+      if (res.status === 401) {
+        navigate("/login");
+        return;
+      }
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -225,6 +322,8 @@ export default function Celulares() {
         phoneNumber: "",
         status: "DISPONIVEL",
         assignedTo: "",
+        cpf: "",
+        department: "",
       });
 
       toast({
@@ -252,6 +351,8 @@ export default function Celulares() {
       phoneNumber: device.phoneNumber || "",
       status: device.status,
       assignedTo: device.assignedTo || "",
+      cpf: device.cpf || "",
+      department: device.department || "",
     });
     setIsEditOpen(true);
   };
@@ -265,9 +366,17 @@ export default function Celulares() {
     try {
       const res = await fetch(`${API_BASE}/mobile-devices/${editingDevice.id}`, {
         method: "PUT",
-        headers: authHeaders(),
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(editForm),
       });
+
+      if (res.status === 401) {
+        navigate("/login");
+        return;
+      }
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -308,8 +417,16 @@ export default function Celulares() {
     try {
       const res = await fetch(`${API_BASE}/mobile-devices/${deviceToDelete.id}`, {
         method: "DELETE",
-        headers: authHeaders(),
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       });
+
+      if (res.status === 401) {
+        navigate("/login");
+        return;
+      }
 
       if (!res.ok) {
         throw new Error("Erro ao excluir aparelho");
@@ -334,6 +451,24 @@ export default function Celulares() {
     }
   };
 
+  // Open Dossier
+  const openDossier = (device: MobileDevice) => {
+    setDossierDevice(device);
+    setIsDossierOpen(true);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(satelliteUrl);
+    toast({
+      title: "Link copiado!",
+      description: "O link da página satélite de coleta foi copiado para a área de transferência.",
+    });
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6 animate-fade-in p-2 md:p-6">
       {/* Top Header */}
@@ -348,13 +483,33 @@ export default function Celulares() {
                 Gestão de Celulares
               </h1>
               <p className="text-sm text-muted-foreground">
-                Controle de inventário móvel, linhas telefônicas e aparelhos corporativos
+                Inventário móvel, linhas telefônicas e auditoria legal de termos de entrega
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsQrOpen(true)}
+            className="gap-2"
+          >
+            <QrCode className="h-4 w-4 text-sky-500" />
+            QR Code Coleta
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCsv}
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Exportar CSV
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -427,7 +582,7 @@ export default function Celulares() {
         <Card className="border-border/60 bg-card/60 backdrop-blur-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Em Manutenção
+              Manutenção
             </CardTitle>
             <Wrench className="h-4 w-4 text-amber-500" />
           </CardHeader>
@@ -435,19 +590,21 @@ export default function Celulares() {
             <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
               {stats.manutencao}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Assistência ou reparo</p>
+            <p className="text-xs text-muted-foreground mt-1">Em reparo técnico</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filter and Table Card */}
-      <Card className="border-border/60 bg-card/50 backdrop-blur-sm shadow-sm">
-        <CardHeader className="pb-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      {/* Main Table Card */}
+      <Card className="border-border/60 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <CardTitle className="text-lg font-semibold">Lista de Dispositivos</CardTitle>
-              <CardDescription>
-                Exibindo {filteredDevices.length} de {devices.length} aparelhos
+              <CardTitle className="text-base font-semibold">
+                Inventário Geral de Telefonia & Termos
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Listagem consolidada com dados de hardware, posse do colaborador e auditoria jurídica
               </CardDescription>
             </div>
 
@@ -456,7 +613,7 @@ export default function Celulares() {
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar modelo, IMEI, linha..."
+                  placeholder="Buscar modelo, CPF, linha, setor..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9 h-9 bg-background/50"
@@ -488,18 +645,18 @@ export default function Celulares() {
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
                   <TableHead className="w-[180px]">Marca & Modelo</TableHead>
-                  <TableHead className="w-[170px]">IMEI</TableHead>
-                  <TableHead className="w-[150px]">Número da Linha</TableHead>
-                  <TableHead className="w-[180px]">Colaborador / Atribuído</TableHead>
-                  <TableHead className="w-[130px]">Status</TableHead>
-                  <TableHead className="w-[120px]">Cadastrado em</TableHead>
-                  {!isReadOnly && <TableHead className="w-[90px] text-right">Ações</TableHead>}
+                  <TableHead className="w-[140px]">Número da Linha</TableHead>
+                  <TableHead className="w-[220px]">Colaborador & CPF</TableHead>
+                  <TableHead className="w-[140px]">Setor</TableHead>
+                  <TableHead className="w-[120px]">Status</TableHead>
+                  <TableHead className="w-[110px]">Auditoria</TableHead>
+                  <TableHead className="w-[110px] text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={isReadOnly ? 6 : 7} className="h-32 text-center">
+                    <TableCell colSpan={7} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                         <RefreshCw className="h-6 w-6 animate-spin text-primary" />
                         <span>Carregando inventário móvel...</span>
@@ -508,7 +665,7 @@ export default function Celulares() {
                   </TableRow>
                 ) : filteredDevices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isReadOnly ? 6 : 7} className="h-32 text-center">
+                    <TableCell colSpan={7} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                         <Smartphone className="h-8 w-8 text-muted-foreground/50" />
                         <span className="font-medium">Nenhum aparelho encontrado</span>
@@ -524,9 +681,6 @@ export default function Celulares() {
                   filteredDevices.map((device) => {
                     const statusInfo = statusConfig[device.status] || statusConfig.DISPONIVEL;
                     const StatusIcon = statusInfo.icon;
-                    const formattedDate = device.createdAt
-                      ? new Date(device.createdAt).toLocaleDateString("pt-BR")
-                      : "—";
 
                     return (
                       <TableRow key={device.id} className="hover:bg-muted/30 transition-colors">
@@ -540,17 +694,15 @@ export default function Celulares() {
                                 {device.model}
                               </div>
                               <div className="text-xs text-muted-foreground font-mono">
-                                {device.brand}
+                                {device.brand} {device.deviceRawModel && device.deviceRawModel !== device.model ? `(${device.deviceRawModel})` : ""}
                               </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          {device.imei || "—"}
-                        </TableCell>
+
                         <TableCell>
                           {device.phoneNumber ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs text-foreground font-medium">
+                            <span className="inline-flex items-center gap-1.5 text-xs text-foreground font-mono font-medium">
                               <Phone className="h-3 w-3 text-muted-foreground" />
                               {device.phoneNumber}
                             </span>
@@ -558,16 +710,34 @@ export default function Celulares() {
                             <span className="text-xs text-muted-foreground/60 italic">Sem linha</span>
                           )}
                         </TableCell>
+
                         <TableCell>
                           {device.assignedTo ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
-                              <User className="h-3 w-3 text-primary" />
-                              {device.assignedTo}
-                            </span>
+                            <div className="min-w-0">
+                              <div className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground truncate">
+                                <User className="h-3 w-3 text-primary shrink-0" />
+                                {device.assignedTo}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-1 mt-0.5">
+                                <IdCard className="h-3 w-3 text-muted-foreground/70" />
+                                {device.cpf || "CPF não informado"}
+                              </div>
+                            </div>
                           ) : (
                             <span className="text-xs text-muted-foreground/60 italic">Não atribuído</span>
                           )}
                         </TableCell>
+
+                        <TableCell>
+                          {device.department ? (
+                            <Badge variant="secondary" className="text-[11px] font-normal">
+                              {device.department}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/50">—</span>
+                          )}
+                        </TableCell>
+
                         <TableCell>
                           <Badge
                             variant="outline"
@@ -577,33 +747,56 @@ export default function Celulares() {
                             {statusInfo.label}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {formattedDate}
+
+                        <TableCell>
+                          {device.termAcceptedAt ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium" title={`IP: ${device.signerIp || "—"}`}>
+                              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                              Assinado
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground/60">
+                              Manual
+                            </span>
+                          )}
                         </TableCell>
-                        {!isReadOnly && (
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                onClick={() => openEdit(device)}
-                                title="Editar"
-                              >
-                                <Edit2 className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                onClick={() => openDelete(device)}
-                                title="Excluir"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        )}
+
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-sky-600 hover:text-sky-700 hover:bg-sky-50 dark:hover:bg-sky-950/40"
+                              onClick={() => openDossier(device)}
+                              title="Dossiê / Ver Termo Legal"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+
+                            {!isReadOnly && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                  onClick={() => openEdit(device)}
+                                  title="Editar"
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => openDelete(device)}
+                                  title="Excluir"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     );
                   })
@@ -614,16 +807,202 @@ export default function Celulares() {
         </CardContent>
       </Card>
 
+      {/* Modal: QR Code de Coleta */}
+      <Dialog open={isQrOpen} onOpenChange={setIsQrOpen}>
+        <DialogContent className="sm:max-w-[440px] text-center">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-center gap-2 text-lg">
+              <QrCode className="h-5 w-5 text-sky-500" />
+              QR Code de Coleta Rápida
+            </DialogTitle>
+            <DialogDescription>
+              Aponte a câmera do celular corporativo para abrir a página satélite de autoatendimento e assinatura do termo.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center justify-center py-4 space-y-4">
+            <div className="p-4 bg-white rounded-2xl shadow-md border border-slate-200 inline-block">
+              <QRCode
+                value={satelliteUrl}
+                size={200}
+                style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                viewBox={`0 0 200 200`}
+              />
+            </div>
+
+            <div className="w-full bg-muted/60 p-2.5 rounded-lg border border-border text-xs font-mono text-muted-foreground break-all flex items-center justify-between gap-2">
+              <span className="truncate">{satelliteUrl}</span>
+              <Button size="icon" variant="ghost" className="h-6 w-6 shrink-0" onClick={handleCopyLink} title="Copiar Link">
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-row gap-2 sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(satelliteUrl, "_blank")}
+              className="gap-1.5 flex-1"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Abrir
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handlePrint}
+              className="gap-1.5 flex-1"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              Imprimir
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleCopyLink}
+              className="gap-1.5 flex-1"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              Copiar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Dossiê / Ver Termo */}
+      <Dialog open={isDossierOpen} onOpenChange={setIsDossierOpen}>
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-primary">
+              <ShieldCheck className="h-5 w-5 text-emerald-500" />
+              Dossiê & Termo de Posse do Dispositivo
+            </DialogTitle>
+            <DialogDescription>
+              Documento comprobatório de entrega com validade jurídica (Lei 14.063/2020).
+            </DialogDescription>
+          </DialogHeader>
+
+          {dossierDevice && (
+            <div ref={printableRef} className="space-y-4 py-2 text-sm text-foreground">
+              {/* Document Header Box */}
+              <div className="border border-border/80 rounded-xl p-4 bg-muted/30 space-y-3">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <div className="font-bold text-base tracking-tight text-foreground">
+                    GELLAK IT CORE — TERMO Nº #{dossierDevice.id.toString().padStart(5, "0")}
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {dossierDevice.status}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-muted-foreground block">Colaborador / Titular:</span>
+                    <strong className="text-sm font-semibold text-foreground">
+                      {dossierDevice.assignedTo || "Não atribuído"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block">CPF:</span>
+                    <strong className="text-sm font-mono text-foreground">
+                      {dossierDevice.cpf || "Não informado"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block">Setor:</span>
+                    <strong className="text-foreground">
+                      {dossierDevice.department || "Não informado"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block">Linha Telefônica:</span>
+                    <strong className="font-mono text-foreground">
+                      {dossierDevice.phoneNumber || "Sem linha vinculada"}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hardware Information Box */}
+              <div className="border border-border/80 rounded-xl p-4 bg-muted/20 space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Smartphone className="h-3.5 w-3.5 text-primary" />
+                  Especificações Técnicas do Aparelho
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                  <div>
+                    <span className="text-muted-foreground block">Marca e Modelo:</span>
+                    <span className="font-medium text-foreground">{dossierDevice.brand} {dossierDevice.model}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block">Modelo Detectado (Hardware):</span>
+                    <span className="font-mono text-foreground">{dossierDevice.deviceRawModel || dossierDevice.model}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block">Sistema Operacional:</span>
+                    <span className="text-foreground">{dossierDevice.osVersion || "Não detectado"}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block">IMEI:</span>
+                    <span className="font-mono text-foreground">{dossierDevice.imei || "Não informado"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Audit & Legal Box */}
+              <div className="border border-emerald-500/30 rounded-xl p-4 bg-emerald-500/5 space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4" />
+                  Registro de Auditoria Eletrônica (Lei 14.063/2020)
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs pt-1">
+                  <div>
+                    <span className="text-muted-foreground block">Data e Hora UTC do Aceite:</span>
+                    <span className="font-mono text-foreground font-medium">
+                      {dossierDevice.termAcceptedAt
+                        ? `${new Date(dossierDevice.termAcceptedAt).toLocaleString("pt-BR", { timeZone: "UTC" })} (UTC)`
+                        : "Registro Manual / Não assinado digitalmente"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block">IP do Signatário:</span>
+                    <span className="font-mono text-foreground font-medium">
+                      {dossierDevice.signerIp || "—"}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed pt-2 border-t border-emerald-500/20">
+                  O signatário reconheceu o recebimento do aparelho para uso corporativo, assumindo responsabilidade civil, administrativa e a obrigação de ressarcimento em caso de extravio, dolo ou mau uso, nos termos do art. 462, § 1º da CLT.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => setIsDossierOpen(false)}>
+              Fechar
+            </Button>
+            <Button onClick={handlePrint} className="gap-2">
+              <Printer className="h-4 w-4" />
+              Imprimir / Salvar PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal: Cadastro de Novo Celular */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Smartphone className="h-5 w-5 text-primary" />
               Cadastrar Novo Celular
             </DialogTitle>
             <DialogDescription>
-              Preencha as informações do aparelho corporativo para registrar no inventário.
+              Cadastre manualmente um aparelho ou linha corporativa no inventário.
             </DialogDescription>
           </DialogHeader>
 
@@ -642,7 +1021,7 @@ export default function Celulares() {
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">Modelo *</label>
                 <Input
-                  placeholder="Ex: iPhone 13, S23"
+                  placeholder="Ex: Galaxy A15, iPhone 13"
                   value={createForm.model}
                   onChange={(e) => setCreateForm({ ...createForm, model: e.target.value })}
                   required
@@ -650,27 +1029,29 @@ export default function Celulares() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">IMEI (15 dígitos) *</label>
-              <Input
-                placeholder="Ex: 356938035643809"
-                value={createForm.imei}
-                onChange={(e) => setCreateForm({ ...createForm, imei: e.target.value })}
-                required
-                className="font-mono text-xs"
-              />
-            </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground">Número da Linha</label>
+                <label className="text-xs font-semibold text-foreground">IMEI (15 dígitos)</label>
                 <Input
-                  placeholder="Ex: (11) 98765-4321"
-                  value={createForm.phoneNumber}
-                  onChange={(e) => setCreateForm({ ...createForm, phoneNumber: e.target.value })}
+                  placeholder="Ex: 356938035643809"
+                  value={createForm.imei}
+                  onChange={(e) => setCreateForm({ ...createForm, imei: e.target.value })}
+                  className="font-mono text-xs"
                 />
               </div>
 
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Número da Linha</label>
+                <Input
+                  placeholder="Ex: (31) 98888-7777"
+                  value={createForm.phoneNumber}
+                  onChange={(e) => setCreateForm({ ...createForm, phoneNumber: e.target.value })}
+                  className="font-mono text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">Status *</label>
                 <Select
@@ -690,17 +1071,49 @@ export default function Celulares() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Setor</label>
+                <Select
+                  value={createForm.department}
+                  onValueChange={(val) => setCreateForm({ ...createForm, department: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o setor" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-56">
+                    {DEPARTMENTS.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                Colaborador / Responsável
-              </label>
-              <Input
-                placeholder="Nome do colaborador atribuído"
-                value={createForm.assignedTo}
-                onChange={(e) => setCreateForm({ ...createForm, assignedTo: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">
+                  Colaborador / Responsável
+                </label>
+                <Input
+                  placeholder="Nome do colaborador"
+                  value={createForm.assignedTo}
+                  onChange={(e) => setCreateForm({ ...createForm, assignedTo: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">CPF do Colaborador</label>
+                <Input
+                  placeholder="000.000.000-00"
+                  value={createForm.cpf}
+                  onChange={(e) => setCreateForm({ ...createForm, cpf: formatCpf(e.target.value) })}
+                  maxLength={14}
+                  className="font-mono text-xs"
+                />
+              </div>
             </div>
 
             <DialogFooter className="pt-2">
@@ -722,14 +1135,14 @@ export default function Celulares() {
 
       {/* Modal: Edição de Celular */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit2 className="h-5 w-5 text-primary" />
               Editar Celular
             </DialogTitle>
             <DialogDescription>
-              Altere as informações do aparelho ou atualize a atribuição de usuário.
+              Atualize as informações de patrimônio, setor e titularidade da linha.
             </DialogDescription>
           </DialogHeader>
 
@@ -754,25 +1167,27 @@ export default function Celulares() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">IMEI *</label>
-              <Input
-                value={editForm.imei}
-                onChange={(e) => setEditForm({ ...editForm, imei: e.target.value })}
-                required
-                className="font-mono text-xs"
-              />
-            </div>
-
             <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">IMEI</label>
+                <Input
+                  value={editForm.imei}
+                  onChange={(e) => setEditForm({ ...editForm, imei: e.target.value })}
+                  className="font-mono text-xs"
+                />
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">Número da Linha</label>
                 <Input
                   value={editForm.phoneNumber}
                   onChange={(e) => setEditForm({ ...editForm, phoneNumber: e.target.value })}
+                  className="font-mono text-xs"
                 />
               </div>
+            </div>
 
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground">Status *</label>
                 <Select
@@ -792,17 +1207,49 @@ export default function Celulares() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Setor</label>
+                <Select
+                  value={editForm.department}
+                  onValueChange={(val) => setEditForm({ ...editForm, department: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o setor" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-56">
+                    {DEPARTMENTS.map((dept) => (
+                      <SelectItem key={dept} value={dept}>
+                        {dept}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground">
-                Colaborador / Responsável
-              </label>
-              <Input
-                value={editForm.assignedTo}
-                onChange={(e) => setEditForm({ ...editForm, assignedTo: e.target.value })}
-                placeholder="Nome do colaborador atribuído"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">
+                  Colaborador / Responsável
+                </label>
+                <Input
+                  value={editForm.assignedTo}
+                  onChange={(e) => setEditForm({ ...editForm, assignedTo: e.target.value })}
+                  placeholder="Nome do colaborador atribuído"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">CPF do Colaborador</label>
+                <Input
+                  value={editForm.cpf}
+                  onChange={(e) => setEditForm({ ...editForm, cpf: formatCpf(e.target.value) })}
+                  placeholder="000.000.000-00"
+                  maxLength={14}
+                  className="font-mono text-xs"
+                />
+              </div>
             </div>
 
             <DialogFooter className="pt-2">
@@ -835,7 +1282,7 @@ export default function Celulares() {
               <strong className="text-foreground">
                 {deviceToDelete?.brand} {deviceToDelete?.model}
               </strong>{" "}
-              (IMEI: {deviceToDelete?.imei || "não informado"})? Esta ação não pode ser desfeita.
+              (Linha: {deviceToDelete?.phoneNumber || "não informada"})? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
 

@@ -10,10 +10,12 @@ const trimOrNull = (value: unknown): string | null => {
 
 export const ingestMobileDevice = async (req: Request, res: Response) => {
   try {
-    const { assignedTo, department, phoneNumber, brand, model, osVersion, deviceRawModel } = req.body;
+    const { assignedTo, cpf, department, phoneNumber, brand, model, osVersion, deviceRawModel } = req.body;
 
     const assignedToValue = trimOrNull(assignedTo);
     const departmentValue = trimOrNull(department);
+    const cpfValue = trimOrNull(cpf);
+    const phoneValue = trimOrNull(phoneNumber);
 
     if (!assignedToValue || !departmentValue) {
       return res.status(400).json({
@@ -23,28 +25,69 @@ export const ingestMobileDevice = async (req: Request, res: Response) => {
 
     const brandValue = trimOrNull(brand) || 'Desconhecido';
     const modelValue = trimOrNull(model) || 'Desconhecido';
-    const signerIp = req.ip || req.socket.remoteAddress || null;
+    const forwardedHeader = req.headers['x-forwarded-for'];
+    const signerIp =
+      (typeof forwardedHeader === 'string' ? forwardedHeader.split(',')[0].trim() : null) ||
+      req.ip ||
+      req.socket.remoteAddress ||
+      null;
 
-    await prisma.mobileDevice.create({
-      data: {
-        assignedTo: assignedToValue,
-        department: departmentValue,
-        phoneNumber: trimOrNull(phoneNumber),
-        brand: brandValue,
-        model: modelValue,
-        osVersion: trimOrNull(osVersion),
-        deviceRawModel: trimOrNull(deviceRawModel),
-        status: MobileStatus.EM_USO,
-        signerIp,
-        termAcceptedAt: new Date(),
-        imei: null,
-      },
-    });
+    const now = new Date();
 
-    return res.status(201).json({
-      success: true,
-      message: 'Aparelho vinculado com sucesso.',
-    });
+    // Upsert inteligente por phoneNumber (se fornecido)
+    let existing = null;
+    if (phoneValue) {
+      existing = await prisma.mobileDevice.findFirst({
+        where: { phoneNumber: phoneValue },
+      });
+    }
+
+    if (existing) {
+      const updated = await prisma.mobileDevice.update({
+        where: { id: existing.id },
+        data: {
+          assignedTo: assignedToValue,
+          cpf: cpfValue,
+          department: departmentValue,
+          brand: brandValue,
+          model: modelValue,
+          osVersion: trimOrNull(osVersion),
+          deviceRawModel: trimOrNull(deviceRawModel),
+          signerIp,
+          termAcceptedAt: now,
+          status: MobileStatus.EM_USO,
+        },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Aparelho atualizado com sucesso.',
+        device: updated,
+      });
+    } else {
+      const created = await prisma.mobileDevice.create({
+        data: {
+          assignedTo: assignedToValue,
+          cpf: cpfValue,
+          department: departmentValue,
+          phoneNumber: phoneValue,
+          brand: brandValue,
+          model: modelValue,
+          osVersion: trimOrNull(osVersion),
+          deviceRawModel: trimOrNull(deviceRawModel),
+          status: MobileStatus.EM_USO,
+          signerIp,
+          termAcceptedAt: now,
+          imei: null,
+        },
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Aparelho vinculado com sucesso.',
+        device: created,
+      });
+    }
   } catch (error: any) {
     console.error('Error ingesting mobile device:', error);
     return res.status(500).json({ error: 'Erro ao registrar aparelho.', details: error.message });

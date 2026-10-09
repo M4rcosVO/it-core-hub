@@ -1,14 +1,22 @@
 import { useEffect, useState, type FormEvent } from "react";
 import UAParser from "ua-parser-js";
-import { CheckCircle2, Satellite, Smartphone } from "lucide-react";
+import { CheckCircle2, Satellite, Smartphone, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DEPARTMENTS } from "@/constants/departments";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const API_BASE = "/api";
 
 interface DetectedDevice {
   brand: string;
@@ -78,29 +86,48 @@ async function detectDevice(): Promise<DetectedDevice> {
   };
 }
 
-const RESPONSIBILITY_TERM = `TERMO DE RESPONSABILIDADE — APARELHO CORPORATIVO
+const RESPONSIBILITY_TERM = `TERMO DE RESPONSABILIDADE E AUDITORIA LEGAL — APARELHO CORPORATIVO
+(Lei nº 14.063/2020 e Art. 462, § 1º da CLT)
 
-1. Objeto
-Declaro ter recebido, em perfeito estado de funcionamento, o aparelho celular corporativo identificado automaticamente neste formulário, para uso exclusivo em atividades profissionais da empresa.
+1. IDENTIFICAÇÃO E RECEBIMENTO
+O colaborador abaixo qualificado e identificado por Nome Completo e CPF declara ter recebido da empresa, em perfeito estado de conservação e pleno funcionamento, o aparelho celular corporativo e linha telefônica identificados tecnicamente neste formulário.
 
-2. Uso e guarda
-Comprometo-me a utilizar o equipamento de forma diligente, zelar pela sua conservação física e lógica, não instalar aplicativos não autorizados pela T.I. e não compartilhar o dispositivo com terceiros.
+2. FINALIDADE EXCLUSIVA DE TRABALHO
+O equipamento, seus acessórios e a linha telefônica destinam-se exclusivamente à execução de atividades e comunicações corporativas da empresa, sendo terminantemente proibida a cessão, empréstimo a terceiros ou utilização incompatível com a política interna de segurança.
 
-3. Dados e segurança
-Reconheço que o aparelho poderá conter acessos corporativos, e-mails, aplicativos e dados da empresa. Obrigo-me a manter senha/biometria ativas, comunicar imediatamente perda, furto, dano ou suspeita de incidente de segurança à equipe de T.I. e a não extrair, copiar ou divulgar informações internas.
+3. RESPONSABILIDADE CIVIL, ADMINISTRATIVA E RESSARCIMENTO
+O colaborador declara ciência de que tem o dever de guarda, cuidado e zelo pelo patrimônio da empresa. Fica expressamente pactuado que:
+a) Danos decorrentes de dolo, culpa, negligência, imprudência ou mau uso implicarão na obrigação de integral ressarcimento financeiro dos custos de reparo ou reposição do bem à empresa, nos termos do art. 462, § 1º da CLT.
+b) Em caso de perda, roubo ou furto, o colaborador deverá comunicar imediatamente o departamento de T.I. para bloqueio remoto e lavrar o respectivo Boletim de Ocorrência (B.O.).
+c) A recusa na devolução ou danos injustificados ensejarão as sanções administrativas cabíveis e eventuais medidas judiciais de reparação civil e criminal.
 
-4. Devolução
-Comprometo-me a devolver o aparelho, acessórios e linha telefônica (quando aplicável) ao encerrar o vínculo, mudar de função ou quando solicitado pela T.I., no mesmo estado em que foram entregues, salvo desgaste natural de uso.
+4. DADOS E CONFIDENCIALIDADE (LGPD)
+O colaborador compromete-se a não extrair dados sigilosos da empresa e a manter as credenciais de segurança e bloqueio de tela (PIN/Biometria) sempre ativas.
 
-5. Responsabilidade
-Estou ciente de que danos decorrentes de mau uso, negligência, perda ou furto sem comunicação imediata poderão gerar responsabilização administrativa e, quando cabível, o ressarcimento do bem.
+5. ASSINATURA ELETRÔNICA AVANÇADA
+Nos termos da Lei nº 14.063/2020, ao marcar o aceite deste formulário, o signatário manifesta adesão irretratável, ficando registrados para fins de auditoria forense a data e hora UTC do aceite, endereço IP de origem e os metadados técnicos do equipamento.`;
 
-6. Ciência
-Ao marcar a caixa de aceite, confirmo que li este termo, concordo com as condições acima e autorizo o registro técnico do aparelho (marca, modelo e versão do sistema) para fins de inventário e auditoria.`;
+const formatCpf = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+};
+
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (!digits.length) return "";
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+};
 
 export default function PublicColeta() {
   const [detected, setDetected] = useState<DetectedDevice | null>(null);
   const [assignedTo, setAssignedTo] = useState("");
+  const [cpf, setCpf] = useState("");
   const [department, setDepartment] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [accepted, setAccepted] = useState(false);
@@ -129,16 +156,42 @@ export default function PublicColeta() {
     };
   }, []);
 
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCpf(formatCpf(e.target.value));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhoneNumber(formatPhone(e.target.value));
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
 
-    if (!assignedTo.trim() || !department.trim() || !phoneNumber.trim()) {
-      setError("Preencha nome completo, setor e número de telefone.");
+    const rawCpf = cpf.replace(/\D/g, "");
+    if (!assignedTo.trim()) {
+      setError("Por favor, preencha o seu nome completo.");
       return;
     }
+
+    if (rawCpf.length !== 11) {
+      setError("O CPF deve conter exatamente 11 dígitos numéricos.");
+      return;
+    }
+
+    if (!department.trim()) {
+      setError("Selecione o seu setor corporativo.");
+      return;
+    }
+
+    const rawPhone = phoneNumber.replace(/\D/g, "");
+    if (rawPhone.length < 10) {
+      setError("Informe um número de telefone válido com DDD.");
+      return;
+    }
+
     if (!accepted) {
-      setError("É necessário aceitar o Termo de Responsabilidade para enviar.");
+      setError("É obrigatório concordar com o Termo de Responsabilidade para continuar.");
       return;
     }
 
@@ -149,6 +202,7 @@ export default function PublicColeta() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           assignedTo: assignedTo.trim(),
+          cpf: cpf.trim(),
           department: department.trim(),
           phoneNumber: phoneNumber.trim(),
           brand: detected?.brand,
@@ -179,10 +233,10 @@ export default function PublicColeta() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-500/15 ring-1 ring-sky-400/30">
             <Satellite className="h-7 w-7 text-sky-300" />
           </div>
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-300/80">Satélite</p>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Coleta de aparelho</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-300/80">Satélite Corporativo</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Coleta de Celular & Termo de Posse</h1>
           <p className="mt-2 text-sm text-slate-400">
-            Vincule seu celular corporativo de forma rápida e segura.
+            Identifique-se e assine digitalmente a posse do seu aparelho corporativo.
           </p>
         </div>
 
@@ -191,27 +245,30 @@ export default function PublicColeta() {
             <CardContent className="flex flex-col items-center gap-4 py-14 text-center">
               <CheckCircle2 className="h-14 w-14 text-emerald-400" />
               <div>
-                <p className="text-lg font-semibold">Aparelho vinculado com sucesso.</p>
-                <p className="mt-2 text-sm text-slate-400">Você já pode fechar esta página.</p>
+                <p className="text-lg font-semibold text-emerald-300">Aparelho vinculado com sucesso!</p>
+                <p className="mt-2 text-sm text-slate-400">
+                  O termo de responsabilidade foi assinado e os dados de auditoria foram salvos na T.I.
+                </p>
+                <p className="mt-1 text-xs text-slate-500">Você já pode fechar esta tela com segurança.</p>
               </div>
             </CardContent>
           ) : (
             <>
               <CardHeader>
-                <CardTitle className="text-lg">Identificação do colaborador</CardTitle>
+                <CardTitle className="text-lg">Identificação do Colaborador</CardTitle>
                 <CardDescription className="text-slate-400">
-                  Informe seus dados. Os dados técnicos do aparelho são capturados automaticamente.
+                  Preencha os dados cadastrais. As informações técnicas do celular são detectadas automaticamente.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="assignedTo">Nome Completo</Label>
                     <Input
                       id="assignedTo"
                       value={assignedTo}
                       onChange={(e) => setAssignedTo(e.target.value)}
-                      placeholder="Seu nome completo"
+                      placeholder="Ex: João da Silva Santos"
                       className="border-slate-700 bg-slate-950/60"
                       autoComplete="name"
                       required
@@ -219,73 +276,99 @@ export default function PublicColeta() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="department">Setor</Label>
+                    <Label htmlFor="cpf">CPF</Label>
                     <Input
-                      id="department"
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      placeholder="Ex: Comercial, Operações, T.I."
-                      className="border-slate-700 bg-slate-950/60"
+                      id="cpf"
+                      value={cpf}
+                      onChange={handleCpfChange}
+                      placeholder="000.000.000-00"
+                      className="border-slate-700 bg-slate-950/60 font-mono"
+                      inputMode="numeric"
+                      maxLength={14}
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phoneNumber">Número de Telefone</Label>
+                    <Label htmlFor="department">Setor</Label>
+                    <Select value={department} onValueChange={setDepartment}>
+                      <SelectTrigger id="department" className="border-slate-700 bg-slate-950/60 text-slate-100">
+                        <SelectValue placeholder="Selecione o seu setor" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 border-slate-800 bg-slate-900 text-slate-100">
+                        {DEPARTMENTS.map((dept) => (
+                          <SelectItem key={dept} value={dept} className="focus:bg-slate-800 focus:text-white">
+                            {dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneNumber">Número da Linha / Telefone</Label>
                     <Input
                       id="phoneNumber"
                       value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="Ex: (11) 98765-4321"
-                      className="border-slate-700 bg-slate-950/60"
+                      onChange={handlePhoneChange}
+                      placeholder="(31) 98888-7777"
+                      className="border-slate-700 bg-slate-950/60 font-mono"
                       inputMode="tel"
                       autoComplete="tel"
+                      maxLength={15}
                       required
                     />
                   </div>
 
                   <div className="rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2.5">
-                    <div className="mb-1 flex items-center gap-2 text-[11px] uppercase tracking-wide text-slate-500">
+                    <div className="mb-1 flex items-center gap-2 text-[11px] uppercase tracking-wide text-sky-400">
                       <Smartphone className="h-3.5 w-3.5" />
-                      Conferência técnica
+                      Dispositivo Reconhecido Automaticamente
                     </div>
-                    <p className="text-sm text-slate-300">
-                      {detected ? `${detected.brand} · ${detected.model}` : "Detectando aparelho..."}
+                    <p className="text-sm font-medium text-slate-200">
+                      {detected ? `${detected.brand} · ${detected.model}` : "Detectando hardware..."}
                     </p>
                     {detected?.osVersion && (
-                      <p className="mt-0.5 text-xs text-slate-500">{detected.osVersion}</p>
+                      <p className="mt-0.5 text-xs text-slate-400">{detected.osVersion}</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Termo de Responsabilidade</Label>
-                    <ScrollArea className="h-40 rounded-md border border-slate-800 bg-slate-950/70 p-3">
+                    <div className="flex items-center justify-between">
+                      <Label>Termo de Compromisso e Auditoria</Label>
+                      <span className="text-[11px] text-sky-400 flex items-center gap-1">
+                        <ShieldAlert className="h-3 w-3" /> Lei 14.063/2020
+                      </span>
+                    </div>
+                    <ScrollArea className="h-44 rounded-md border border-slate-800 bg-slate-950/70 p-3">
                       <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-400">
                         {RESPONSIBILITY_TERM}
                       </p>
                     </ScrollArea>
-                    <label className="flex items-start gap-2 text-sm text-slate-300">
+                    <label className="flex items-start gap-2.5 text-sm text-slate-300 cursor-pointer pt-1">
                       <Checkbox
                         checked={accepted}
                         onCheckedChange={(value) => setAccepted(value === true)}
-                        className="mt-0.5 border-slate-500"
+                        className="mt-0.5 border-slate-500 data-[state=checked]:bg-sky-500 data-[state=checked]:border-sky-500"
                       />
-                      <span>Li e aceito o Termo de Responsabilidade.</span>
+                      <span className="text-xs leading-snug">
+                        Declaro que li e concordo integralmente com o Termo de Responsabilidade, assumindo as obrigações e o ressarcimento por avarias/mau uso.
+                      </span>
                     </label>
                   </div>
 
                   {error && (
-                    <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                    <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
                       {error}
                     </p>
                   )}
 
                   <Button
                     type="submit"
-                    className="w-full bg-sky-600 text-white hover:bg-sky-500"
+                    className="w-full bg-sky-600 text-white hover:bg-sky-500 font-medium py-2.5 shadow-lg shadow-sky-900/30"
                     disabled={submitting || !accepted}
                   >
-                    {submitting ? "Enviando..." : "Vincular aparelho"}
+                    {submitting ? "Processando e Assinando..." : "Assinar e Vincular Aparelho"}
                   </Button>
                 </form>
               </CardContent>
